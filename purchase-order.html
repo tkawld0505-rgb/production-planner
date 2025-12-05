@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>구매발주 관리 시스템 v4</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        /* 탭 */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px 5px 0 0;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .tab:hover {
+            background: #e0e0e0;
+        }
+        
+        .tab.active:hover {
+            background: #45a049;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* 알림 */
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: none;
+            animation: slideIn 0.3s;
+        }
+        
+        .alert.show {
+            display: block;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* 모달 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .modal.show {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .modal-header h2 {
+            color: #2c3e50;
+        }
+        
+        .close-btn {
+            font-size: 28px;
+            font-weight: bold;
+            color: #999;
+            cursor: pointer;
+            border: none;
+            background: none;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        
+        .close-btn:hover {
+            color: #333;
+        }
+        
+        /* 자재 선택 테이블 */
+        .material-select-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #ddd;
+            margin-top: 15px;
+        }
+        
+        .material-select-table th {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 13px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .material-select-table td {
+            padding: 8px 10px;
+            border: 1px solid #e0e0e0;
+            font-size: 13px;
+        }
+        
+        .material-select-table tbody tr {
+            cursor: pointer;
+            transition: background 0.1s;
+            user-select: none;
+        }
+        
+        .material-select-table tbody tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .material-select-table tbody tr.selected {
+            background: #e3f2fd !important;
+        }
+        
+        .material-select-table input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .table-scroll {
+            max-height: 450px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        /* 폼 */
+        .header-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .header-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+        }
+        
+        /* 테이블 */
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        th {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-size: 13px;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        td {
+            padding: 5px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        td input, td select {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        
+        td input:focus, td select:focus {
+            border-color: #4CAF50;
+            background: #f0f8f0;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .input-table td {
+            padding: 2px;
+        }
+        
+        .input-table input[type="number"] {
+            text-align: right;
+        }
+        
+        .readonly {
+            background: #f0f0f0 !important;
+            color: #666;
+        }
+        
+        /* 버튼 */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        
+        .btn-info {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background: #0b7dda;
+        }
+        
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        
+        .search-box {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        /* 설정 */
+        .settings-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .settings-box h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .info-text {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .total-info {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: right;
+        }
+        
+        .deadline-input {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        
+        .deadline-input input {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 구매발주 관리 시스템 v4</h1>
+        
+        <div class="alert alert-success" id="alertSuccess">✅ 성공!</div>
+        <div class="alert alert-error" id="alertError">❌ 오류!</div>
+        
+        <!-- 탭 -->
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('input')">📝 발주 입력</button>
+            <button class="tab" onclick="showTab('list')">📊 발주 목록</button>
+            <button class="tab" onclick="showTab('master')">🔧 자재마스터</button>
+            <button class="tab" onclick="showTab('settings')">⚙️ 설정</button>
+        </div>
+        
+        <!-- 발주 입력 -->
+        <div id="input-tab" class="tab-content active">
+            <div class="header-form">
+                <h3 style="margin-bottom: 15px;">📋 발주 기본 정보</h3>
+                <div class="header-grid">
+                    <div class="form-group">
+                        <label>발주일 *</label>
+                        <input type="date" id="orderDate">
+                    </div>
+                    <div class="form-group">
+                        <label>고객사 *</label>
+                        <input type="text" id="customer" placeholder="고객사명">
+                    </div>
+                    <div class="form-group">
+                        <label>발주번호 *</label>
+                        <input type="text" id="orderNo" placeholder="PO-2024-001">
+                    </div>
+                    <div class="form-group">
+                        <label>납기요청일 *</label>
+                        <input type="date" id="deliveryDate">
+                    </div>
+                </div>
+            </div>
+            
+            <h3 style="margin-bottom: 10px;">📦 발주 상세</h3>
+            
+            <div class="button-group">
+                <button class="btn-info" onclick="openSupplierModal()">+ 공급업체별 자재 추가</button>
+                <button class="btn-secondary" onclick="addEmptyRow()">+ 빈 행 추가</button>
+            </div>
+            
+            <div class="table-container">
+                <table class="input-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">공급업체</th>
+                            <th style="width: 120px;">자재코드</th>
+                            <th style="width: 200px;">자재명</th>
+                            <th style="width: 80px;">MOQ</th>
+                            <th style="width: 100px;">수량 *</th>
+                            <th style="width: 100px;">단가($)</th>
+                            <th style="width: 100px;">단가(₩)</th>
+                            <th style="width: 120px;">금액(₩)</th>
+                            <th style="width: 150px;">비고</th>
+                            <th style="width: 50px;">삭제</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inputTableBody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="total-info" id="totalAmount">합계: ₩0</div>
+            
+            <div class="button-group">
+                <button class="btn-primary" onclick="saveAllOrders()">💾 일괄 저장</button>
+                <button class="btn-danger" onclick="clearAllInput()">🔄 전체 초기화</button>
+            </div>
+        </div>
+        
+        <!-- 발주 목록 -->
+        <div id="list-tab" class="tab-content">
+            <div class="button-group">
+                <input type="text" class="search-box" id="searchBox" placeholder="🔍 검색..." onkeyup="filterTable()">
+                <button class="btn-info" onclick="loadOrdersFromSheets()">🔄 새로고침</button>
+            </div>
+            
+            <div class="table-container">
+                <table id="orderTable">
+                    <thead>
+                        <tr>
+                            <th>발주일</th>
+                            <th>고객사</th>
+                            <th>공급업체</th>
+                            <th>발주번호</th>
+                            <th>코드</th>
+                            <th>자재명</th>
+                            <th>MOQ</th>
+                            <th>수량</th>
+                            <th>단가($)</th>
+                            <th>단가(₩)</th>
+                            <th>금액(₩)</th>
+                            <th>납기일</th>
+                            <th>비고</th>
+                            <th>마감월</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderTableBody">
+                        <tr>
+                            <td colspan="15" style="text-align: center; padding: 40px; color: #999;">
+                                "🔄 새로고침" 버튼을 클릭하여 데이터를 불러오세요.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 자재마스터 -->
+        <div id="master-tab" class="tab-content">
+            <h3>🔧 자재마스터 관리</h3>
+            
+            <div class="button-group">
+                <button class="btn-info" onclick="loadMaterialsFromSheets()">📥 구글에서 불러오기</button>
+                <button class="btn-primary" onclick="saveMaterialsToSheets()">💾 구글에 저장</button>
+                <button class="btn-secondary" onclick="addMaterialRow()">+ 새 자재 추가</button>
+            </div>
+            
+            <div class="table-container">
+                <table class="input-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 150px;">자재코드 *</th>
+                            <th style="width: 300px;">자재명 *</th>
+                            <th style="width: 100px;">MOQ</th>
+                            <th style="width: 150px;">공급업체 *</th>
+                            <th style="width: 300px;">비고</th>
+                            <th style="width: 80px;">삭제</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materialTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 설정 -->
+        <div id="settings-tab" class="tab-content">
+            <div class="settings-box">
+                <h3>🔗 Google Sheets 연동 설정</h3>
+                
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>스프레드시트 ID *</label>
+                    <input type="text" id="spreadsheetId" placeholder="1AbC2dEf3GhI4jKl5MnO6pQr...">
+                </div>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>API 키 *</label>
+                    <input type="text" id="apiKey" placeholder="AIzaSyD...">
+                </div>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>환율 (USD → KRW)</label>
+                    <input type="number" id="exchangeRate" value="1300">
+                </div>
+                
+                <div class="button-group" style="margin-top: 20px;">
+                    <button class="btn-primary" onclick="saveSettings()">💾 설정 저장</button>
+                    <button class="btn-info" onclick="testConnection()">🔌 연결 테스트</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 공급업체 자재 선택 모달 -->
+    <div id="supplierModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📦 자재 선택 (드래그로 선택 가능)</h2>
+                <button class="close-btn" onclick="closeSupplierModal()">&times;</button>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>공급업체 선택</label>
+                <select id="modalSupplier" onchange="filterMaterialsBySupplier()" style="font-size: 15px; padding: 10px;">
+                    <option value="">선택하세요</option>
+                </select>
+            </div>
+            
+            <div class="table-scroll">
+                <table class="material-select-table" id="materialSelectTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">선택</th>
+                            <th style="width: 150px;">자재코드</th>
+                            <th>자재명</th>
+                            <th style="width: 100px;">MOQ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materialSelectBody">
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 40px; color: #999;">
+                                공급업체를 선택하세요
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="button-group" style="margin-top: 20px; justify-content: flex-end;">
+                <button class="btn-secondary" onclick="closeSupplierModal()">취소</button>
+                <button class="btn-primary" onclick="addSelectedMaterials()">선택 완료</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 전역 변수
+        let materials = [];
+        let exchangeRate = 1300;
+        let SPREADSHEET_ID = '';
+        let API_KEY = '';
+        let ordersData = [];
+        let isDragging = false;
+        let dragStartIndex = -1;
+        
+        // 페이지 로드
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('orderDate').value = today;
+            document.getElementById('deliveryDate').value = today;
+            loadSettings();
+        };
+        
+        // 탭 전환
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+            
+            if(tabName === 'master') renderMaterialTable();
+        }
+        
+        // 알림
+        function showAlert(type, message) {
+            const alertBox = type === 'success' ? document.getElementById('alertSuccess') : document.getElementById('alertError');
+            alertBox.textContent = message;
+            alertBox.classList.add('show');
+            setTimeout(() => alertBox.classList.remove('show'), 3000);
+        }
+        
+        // ========== Google Sheets API ==========
+        
+        async function fetchFromSheets(range) {
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?key=${API_KEY}`;
+            const response = await fetch(url);
+            if(!response.ok) throw new Error(await response.text());
+            return await response.json();
+        }
+        
+        async function appendToSheets(range, values) {
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED&key=${API_KEY}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ values: values })
+            });
+            if(!response.ok) throw new Error(await response.text());
+            return await response.json();
+        }
+        
+        async function updateSheets(range, values) {
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=USER_ENTERED&key=${API_KEY}`;
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ values: values })
+            });
+            if(!response.ok) throw new Error(await response.text());
+            return await response.json();
+        }
+        
+        // ========== 자재마스터 ==========
+        
+        async function loadMaterialsFromSheets(silent = false) {
+            if(!API_KEY || !SPREADSHEET_ID) {
+                if(!silent) showAlert('error', '설정을 먼저 완료하세요!');
+                return;
+            }
+            
+            try {
+                if(!silent) showAlert('success', '📥 자재마스터를 불러오는 중...');
+                
+                const data = await fetchFromSheets('자재마스터!A2:E');
+                
+                if(data.values && data.values.length > 0) {
+                    materials = data.values.map(row => ({
+                        code: row[0] || '',
+                        name: row[1] || '',
+                        moq: row[2] || '',
+                        supplier: row[3] || '',
+                        remarks: row[4] || ''
+                    }));
+                    
+                    renderMaterialTable();
+                    updateSupplierOptions();
+                    if(!silent) showAlert('success', `✅ ${materials.length}개의 자재를 불러왔습니다!`);
+                } else {
+                    materials = [];
+                    if(!silent) showAlert('error', '자재 데이터가 없습니다.');
+                }
+                
+            } catch(error) {
+                console.error('불러오기 오류:', error);
+                if(!silent) showAlert('error', '불러오기 실패: ' + error.message);
+            }
+        }
+        
+        function renderMaterialTable() {
+            const tbody = document.getElementById('materialTableBody');
+            tbody.innerHTML = '';
+            
+            materials.forEach(mat => {
+                const row = tbody.insertRow();
+                ['code', 'name', 'moq', 'supplier', 'remarks'].forEach(field => {
+                    const cell = row.insertCell();
+                    const input = document.createElement('input');
+                    input.type = field === 'moq' ? 'number' : 'text';
+                    input.value = mat[field] || '';
+                    input.placeholder = field === 'moq' ? '0' : '';
+                    cell.appendChild(input);
+                });
+                
+                const deleteCell = row.insertCell();
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'X';
+                deleteBtn.className = 'btn-danger btn-small';
+                deleteBtn.onclick = () => row.remove();
+                deleteCell.appendChild(deleteBtn);
+            });
+            
+            for(let i = 0; i < 3; i++) addMaterialRow();
+        }
+        
+        function addMaterialRow() {
+            const tbody = document.getElementById('materialTableBody');
+            const row = tbody.insertRow();
+            
+            ['자재코드', '자재명', 'MOQ', '공급업체', '비고'].forEach((placeholder, index) => {
+                const cell = row.insertCell();
+                const input = document.createElement('input');
+                input.type = index === 2 ? 'number' : 'text';
+                input.placeholder = placeholder;
+                cell.appendChild(input);
+            });
+            
+            const deleteCell = row.insertCell();
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'X';
+            deleteBtn.className = 'btn-danger btn-small';
+            deleteBtn.onclick = () => row.remove();
+            deleteCell.appendChild(deleteBtn);
+        }
+        
+        async function saveMaterialsToSheets() {
+            if(!API_KEY || !SPREADSHEET_ID) {
+                showAlert('error', '설정을 먼저 완료하세요!');
+                return;
+            }
+            
+            const tbody = document.getElementById('materialTableBody');
+            const rows = [];
+            
+            for(let row of tbody.rows) {
+                const code = row.cells[0].querySelector('input').value.trim();
+                const name = row.cells[1].querySelector('input').value.trim();
+                const moq = row.cells[2].querySelector('input').value.trim();
+                const supplier = row.cells[3].querySelector('input').value.trim();
+                const remarks = row.cells[4].querySelector('input').value.trim();
+                
+                if(code && name && supplier) {
+                    rows.push([code, name, moq, supplier, remarks]);
+                }
+            }
+            
+            if(rows.length === 0) {
+                showAlert('error', '저장할 자재가 없습니다!');
+                return;
+            }
+            
+            try {
+                await updateSheets('자재마스터!A2:E', rows);
+                showAlert('success', `✅ ${rows.length}개의 자재가 저장되었습니다!`);
+                await loadMaterialsFromSheets(true);
+            } catch(error) {
+                console.error('저장 오류:', error);
+                showAlert('error', '저장 실패: ' + error.message);
+            }
+        }
+        
+        // ========== 공급업체 모달 (드래그 선택) ==========
+        
+        function updateSupplierOptions() {
+            const select = document.getElementById('modalSupplier');
+            select.innerHTML = '<option value="">선택하세요</option>';
+            
+            const suppliers = [...new Set(materials.map(m => m.supplier))];
+            suppliers.forEach(sup => {
+                select.innerHTML += `<option value="${sup}">${sup}</option>`;
+            });
+        }
+        
+        function openSupplierModal() {
+            if(materials.length === 0) {
+                showAlert('error', '먼저 자재마스터를 불러오세요!');
+                return;
+            }
+            document.getElementById('supplierModal').classList.add('show');
+        }
+        
+        function closeSupplierModal() {
+            document.getElementById('supplierModal').classList.remove('show');
+            document.getElementById('modalSupplier').value = '';
+            document.getElementById('materialSelectBody').innerHTML = '';
+        }
+        
+        function filterMaterialsBySupplier() {
+            const supplier = document.getElementById('modalSupplier').value;
+            const tbody = document.getElementById('materialSelectBody');
+            
+            if(!supplier) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: #999;">공급업체를 선택하세요</td></tr>';
+                return;
+            }
+            
+            const filtered = materials.filter(m => m.supplier === supplier);
+            
+            if(filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: #999;">자재가 없습니다</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = filtered.map((mat, index) => `
+                <tr data-index="${index}">
+                    <td style="text-align: center;">
+                        <input type="checkbox" class="mat-checkbox" data-index="${index}">
+                    </td>
+                    <td><strong>${mat.code}</strong></td>
+                    <td>${mat.name}</td>
+                    <td style="text-align: center;">${mat.moq || '-'}</td>
+                </tr>
+            `).join('');
+            
+            // 드래그 이벤트 설정
+            setupDragSelection();
+        }
+        
+        function setupDragSelection() {
+            const tbody = document.getElementById('materialSelectBody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach((row, index) => {
+                row.addEventListener('mousedown', (e) => {
+                    if(e.target.tagName === 'INPUT') return;
+                    isDragging = true;
+                    dragStartIndex = index;
+                    toggleRowSelection(row);
+                    e.preventDefault();
+                });
+                
+                row.addEventListener('mouseenter', () => {
+                    if(isDragging) {
+                        toggleRowSelection(row);
+                    }
+                });
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                dragStartIndex = -1;
+            });
+        }
+        
+        function toggleRowSelection(row) {
+            const checkbox = row.querySelector('.mat-checkbox');
+            if(checkbox) {
+                checkbox.checked = !checkbox.checked;
+                row.classList.toggle('selected', checkbox.checked);
+            }
+        }
+        
+        function addSelectedMaterials() {
+            const supplier = document.getElementById('modalSupplier').value;
+            const filtered = materials.filter(m => m.supplier === supplier);
+            const checkboxes = document.querySelectorAll('.mat-checkbox:checked');
+            
+            if(checkboxes.length === 0) {
+                showAlert('error', '자재를 선택하세요!');
+                return;
+            }
+            
+            checkboxes.forEach(cb => {
+                const index = parseInt(cb.dataset.index);
+                const mat = filtered[index];
+                addMaterialRow_toInput(mat);
+            });
+            
+            closeSupplierModal();
+            showAlert('success', `✅ ${checkboxes.length}개의 자재가 추가되었습니다!`);
+        }
+        
+        // ========== 발주 입력 ==========
+        
+        function addMaterialRow_toInput(material) {
+            const tbody = document.getElementById('inputTableBody');
+            const row = tbody.insertRow();
+            
+            // 공급업체
+            const supplierCell = row.insertCell();
+            const supplierInput = document.createElement('input');
+            supplierInput.type = 'text';
+            supplierInput.value = material.supplier;
+            supplierInput.className = 'readonly';
+            supplierInput.readOnly = true;
+            supplierCell.appendChild(supplierInput);
+            
+            // 자재코드
+            const codeCell = row.insertCell();
+            const codeInput = document.createElement('input');
+            codeInput.type = 'text';
+            codeInput.value = material.code;
+            codeInput.className = 'readonly';
+            codeInput.readOnly = true;
+            codeCell.appendChild(codeInput);
+            
+            // 자재명
+            const nameCell = row.insertCell();
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.value = material.name;
+            nameInput.className = 'readonly';
+            nameInput.readOnly = true;
+            nameCell.appendChild(nameInput);
+            
+            // MOQ
+            const moqCell = row.insertCell();
+            const moqInput = document.createElement('input');
+            moqInput.type = 'text';
+            moqInput.value = material.moq || '';
+            moqInput.className = 'readonly';
+            moqInput.readOnly = true;
+            moqCell.appendChild(moqInput);
+            
+            // 수량
+            const qtyCell = row.insertCell();
+            const qtyInput = document.createElement('input');
+            qtyInput.type = 'number';
+            qtyInput.placeholder = '0';
+            qtyInput.onchange = calculateRowAmount;
+            qtyCell.appendChild(qtyInput);
+            
+            // 단가($)
+            const priceUSDCell = row.insertCell();
+            const priceUSDInput = document.createElement('input');
+            priceUSDInput.type = 'number';
+            priceUSDInput.step = '0.01';
+            priceUSDInput.placeholder = '0.00';
+            priceUSDInput.onchange = calculateRowAmount;
+            priceUSDCell.appendChild(priceUSDInput);
+            
+            // 단가(₩)
+            const priceKRWCell = row.insertCell();
+            const priceKRWInput = document.createElement('input');
+            priceKRWInput.type = 'number';
+            priceKRWInput.placeholder = '0';
+            priceKRWInput.onchange = calculateRowAmount;
+            priceKRWCell.appendChild(priceKRWInput);
+            
+            // 금액(₩)
+            const amountCell = row.insertCell();
+            const amountInput = document.createElement('input');
+            amountInput.type = 'number';
+            amountInput.className = 'readonly';
+            amountInput.readOnly = true;
+            amountCell.appendChild(amountInput);
+            
+            // 비고
+            const remarksCell = row.insertCell();
+            const remarksInput = document.createElement('input');
+            remarksInput.type = 'text';
+            remarksInput.placeholder = '비고';
+            remarksCell.appendChild(remarksInput);
+            
+            // 삭제
+            const deleteCell = row.insertCell();
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'X';
+            deleteBtn.className = 'btn-danger btn-small';
+            deleteBtn.onclick = () => { row.remove(); updateTotalAmount(); };
+            deleteCell.appendChild(deleteBtn);
+        }
+        
+        function addEmptyRow() {
+            const tbody = document.getElementById('inputTableBody');
+            const row = tbody.insertRow();
+            
+            for(let i = 0; i < 9; i++) {
+                const cell = row.insertCell();
+                const input = document.createElement('input');
+                
+                if(i < 4) {
+                    input.type = 'text';
+                } else {
+                    input.type = 'number';
+                    if(i === 5 || i === 6) input.step = '0.01';
+                    if(i >= 4 && i <= 7) input.onchange = calculateRowAmount;
+                    if(i === 7) {
+                        input.className = 'readonly';
+                        input.readOnly = true;
+                    }
+                }
+                cell.appendChild(input);
+            }
+            
+            const deleteCell = row.insertCell();
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'X';
+            deleteBtn.className = 'btn-danger btn-small';
+            deleteBtn.onclick = () => { row.remove(); updateTotalAmount(); };
+            deleteCell.appendChild(deleteBtn);
+        }
+        
+        function calculateRowAmount() {
+            const row = event.target.closest('tr');
+            const qty = parseFloat(row.cells[4].querySelector('input').value) || 0;
+            const priceUSD = parseFloat(row.cells[5].querySelector('input').value) || 0;
+            const priceKRW = parseFloat(row.cells[6].querySelector('input').value) || 0;
+            
+            let finalPriceKRW = priceKRW;
+            
+            if(priceUSD > 0) {
+                finalPriceKRW = Math.round(priceUSD * exchangeRate);
+                row.cells[6].querySelector('input').value = finalPriceKRW;
+            }
+            
+            const amount = qty * finalPriceKRW;
+            row.cells[7].querySelector('input').value = Math.round(amount);
+            
+            updateTotalAmount();
+        }
+        
+        function updateTotalAmount() {
+            const tbody = document.getElementById('inputTableBody');
+            let total = 0;
+            
+            for(let row of tbody.rows) {
+                const amount = parseFloat(row.cells[7].querySelector('input').value) || 0;
+                total += amount;
+            }
+            
+            document.getElementById('totalAmount').textContent = `합계: ₩${total.toLocaleString()}`;
+        }
+        
+        function clearAllInput() {
+            if(!confirm('모든 입력 내용을 초기화하시겠습니까?')) return;
+            
+            document.getElementById('customer').value = '';
+            document.getElementById('orderNo').value = '';
+            document.getElementById('inputTableBody').innerHTML = '';
+            updateTotalAmount();
+        }
+        
+        async function saveAllOrders() {
+            if(!API_KEY || !SPREADSHEET_ID) {
+                showAlert('error', '설정을 먼저 완료하세요!');
+                return;
+            }
+            
+            const orderDate = document.getElementById('orderDate').value;
+            const customer = document.getElementById('customer').value;
+            const orderNo = document.getElementById('orderNo').value;
+            const deliveryDate = document.getElementById('deliveryDate').value;
+            
+            if(!orderDate || !customer || !orderNo) {
+                showAlert('error', '필수 항목을 입력하세요!');
+                return;
+            }
+            
+            const tbody = document.getElementById('inputTableBody');
+            const rows = [];
+            
+            for(let row of tbody.rows) {
+                const supplier = row.cells[0].querySelector('input').value;
+                const code = row.cells[1].querySelector('input').value;
+                const name = row.cells[2].querySelector('input').value;
+                const moq = row.cells[3].querySelector('input').value;
+                const qty = row.cells[4].querySelector('input').value;
+                const priceUSD = row.cells[5].querySelector('input').value;
+                const priceKRW = row.cells[6].querySelector('input').value;
+                const amount = row.cells[7].querySelector('input').value;
+                const remarks = row.cells[8].querySelector('input').value;
+                
+                if(supplier && code && qty) {
+                    rows.push([
+                        orderDate, customer, supplier, orderNo, code, name, moq,
+                        qty, priceUSD, priceKRW, amount, deliveryDate, remarks, ''
+                    ]);
+                }
+            }
+            
+            if(rows.length === 0) {
+                showAlert('error', '입력된 발주 항목이 없습니다!');
+                return;
+            }
+            
+            try {
+                await appendToSheets('발주데이터!A:N', rows);
+                showAlert('success', `✅ ${rows.length}건의 발주가 저장되었습니다!`);
+                clearAllInput();
+            } catch(error) {
+                console.error('저장 오류:', error);
+                showAlert('error', '저장 실패: ' + error.message);
+            }
+        }
+        
+        // ========== 발주 목록 ==========
+        
+        async function loadOrdersFromSheets() {
+            if(!API_KEY || !SPREADSHEET_ID) {
+                showAlert('error', '설정을 먼저 완료하세요!');
+                return;
+            }
+            
+            try {
+                showAlert('success', '📥 발주 목록을 불러오는 중...');
+                
+                const data = await fetchFromSheets('발주데이터!A2:N');
+                const tbody = document.getElementById('orderTableBody');
+                
+                if(!data.values || data.values.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="15" style="text-align: center; padding: 40px;">데이터가 없습니다.</td></tr>';
+                    return;
+                }
+                
+                ordersData = data.values;
+                
+                tbody.innerHTML = ordersData.map((row, index) => `
+                    <tr>
+                        <td>${row[0] || ''}</td>
+                        <td>${row[1] || ''}</td>
+                        <td>${row[2] || ''}</td>
+                        <td>${row[3] || ''}</td>
+                        <td>${row[4] || ''}</td>
+                        <td>${row[5] || ''}</td>
+                        <td style="text-align: center;">${row[6] || ''}</td>
+                        <td style="text-align: right;">${row[7] ? Number(row[7]).toLocaleString() : ''}</td>
+                        <td style="text-align: right;">${row[8] ? '$' + Number(row[8]).toFixed(2) : ''}</td>
+                        <td style="text-align: right;">${row[9] ? '₩' + Number(row[9]).toLocaleString() : ''}</td>
+                        <td style="text-align: right;">${row[10] ? '₩' + Number(row[10]).toLocaleString() : ''}</td>
+                        <td>${row[11] || ''}</td>
+                        <td>${row[12] || ''}</td>
+                        <td>
+                            <div class="deadline-input">
+                                <input type="month" value="${row[13] || ''}" id="deadline_${index}">
+                                <button class="btn-primary btn-small" onclick="updateDeadline(${index})">저장</button>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="btn-danger btn-small" onclick="deleteOrder(${index})">삭제</button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                showAlert('success', `✅ ${ordersData.length}건의 발주를 불러왔습니다!`);
+                
+            } catch(error) {
+                console.error('불러오기 오류:', error);
+                showAlert('error', '불러오기 실패: ' + error.message);
+            }
+        }
+        
+        async function updateDeadline(index) {
+            const deadline = document.getElementById(`deadline_${index}`).value;
+            
+            if(!deadline) {
+                showAlert('error', '마감월을 입력하세요!');
+                return;
+            }
+            
+            try {
+                ordersData[index][13] = deadline;
+                await updateSheets('발주데이터!A2:N', ordersData);
+                showAlert('success', '✅ 마감월이 업데이트되었습니다!');
+            } catch(error) {
+                console.error('업데이트 오류:', error);
+                showAlert('error', '업데이트 실패: ' + error.message);
+            }
+        }
+        
+        async function deleteOrder(index) {
+            if(!confirm('정말 삭제하시겠습니까?')) return;
+            
+            try {
+                ordersData.splice(index, 1);
+                await updateSheets('발주데이터!A2:N', ordersData);
+                showAlert('success', '✅ 삭제되었습니다!');
+                await loadOrdersFromSheets();
+            } catch(error) {
+                console.error('삭제 오류:', error);
+                showAlert('error', '삭제 실패: ' + error.message);
+            }
+        }
+        
+        function filterTable() {
+            const searchText = document.getElementById('searchBox').value.toLowerCase();
+            const tbody = document.getElementById('orderTableBody');
+            
+            for(let row of tbody.rows) {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchText) ? '' : 'none';
+            }
+        }
+        
+        // ========== 설정 ==========
+        
+        function saveSettings() {
+            SPREADSHEET_ID = document.getElementById('spreadsheetId').value;
+            API_KEY = document.getElementById('apiKey').value;
+            exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 1300;
+            
+            const settings = {
+                spreadsheetId: SPREADSHEET_ID,
+                apiKey: API_KEY,
+                exchangeRate: exchangeRate
+            };
+            
+            localStorage.setItem('purchaseSettings', JSON.stringify(settings));
+            showAlert('success', '✅ 설정이 저장되었습니다!');
+        }
+        
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('purchaseSettings'));
+            
+            if(settings) {
+                SPREADSHEET_ID = settings.spreadsheetId || '';
+                API_KEY = settings.apiKey || '';
+                exchangeRate = settings.exchangeRate || 1300;
+                
+                document.getElementById('spreadsheetId').value = SPREADSHEET_ID;
+                document.getElementById('apiKey').value = API_KEY;
+                document.getElementById('exchangeRate').value = exchangeRate;
+            }
+        }
+        
+        async function testConnection() {
+            if(!SPREADSHEET_ID || !API_KEY) {
+                showAlert('error', '스프레드시트 ID와 API 키를 먼저 입력하세요!');
+                return;
+            }
+            
+            try {
+                showAlert('success', '🔌 연결을 테스트하는 중...');
+                
+                await fetchFromSheets('자재마스터!A1:A1');
+                
+                showAlert('success', '✅ 연결 성공!');
+                
+                await loadMaterialsFromSheets(true);
+                
+            } catch(error) {
+                console.error('연결 테스트 오류:', error);
+                showAlert('error', '❌ 연결 실패: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
