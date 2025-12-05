@@ -1,0 +1,2987 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DI-TECH</title>
+    
+    <!-- 🔥 SheetJS 라이브러리 추가 (엑셀 파일 읽기용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Malgun Gothic', Arial, sans-serif; background: #f8f9fa; overflow: hidden; }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 8px 20px; display: flex;
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 16px; font-weight: bold; }
+        .header-controls { display: flex; gap: 8px; }
+        
+        .btn {
+            padding: 5px 10px; border: none; border-radius: 4px;
+            cursor: pointer; font-size: 11px; font-weight: bold; transition: all 0.2s;
+        }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-secondary { background: white; color: #667eea; }
+        .btn-danger { background: #f44336; color: white; font-size: 14px; padding: 2px 6px; }
+        .btn-warning { background: #FF9800; color: white; }
+        
+        .main-layout { display: flex; height: calc(100vh - 40px); }
+        .full-container { 
+            flex: 1; 
+            overflow: auto; 
+            background: #fafafa; 
+            padding: 0;
+            position: relative;
+        }
+        .control-panel {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 0;
+            margin-bottom: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 35px;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            gap: 15px;
+        }
+        .control-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .control-right {
+            width: 450px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .gantt-container-wrapper {
+            margin-top: 80px;
+            padding: 5px;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            background: white;
+        }
+        .control-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .model-list {
+            max-height: 450px; overflow-y: auto; border: 1px solid #ddd;
+            border-radius: 3px; margin-top: 3px; background: white;
+            position: absolute;
+            left: 15px;
+            top: 155px;
+            z-index: 200;
+            width: 650px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .model-list-header {
+            padding: 8px 10px;
+            background: #f5f5f5;
+            border-bottom: 2px solid #ddd;
+            font-weight: bold;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            sticky: top;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .model-item {
+            padding: 8px 10px; cursor: pointer; font-size: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .model-item:hover { background: #e3f2fd; }
+        
+        .gantt-chart {
+            background: white; border-radius: 4px; padding: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); min-width: fit-content;
+        }
+        
+        .gantt-header {
+            display: flex; background: #f5f5f5; border: 2px solid #333;
+            margin-bottom: 1px; position: sticky; top: 0; z-index: 10;
+        }
+        
+        .line-label {
+            width: 40px; font-weight: bold; padding: 5px; text-align: center;
+            background: #e3f2fd; border-right: 1px solid #333; font-size: 11px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        
+        /* 🔥 임시 라인 스타일 */
+        .line-label.parking-line {
+            background: #ffeb3b;
+            color: #000;
+            font-size: 10px;
+        }
+        
+        .date-header { display: flex; flex: 1; }
+        .date-col {
+            display: flex; flex-direction: column; 
+            min-width: 180px;
+            border-left: 1px solid #333;
+        }
+        .date-day {
+            padding: 4px; text-align: center; font-size: 10px;
+            border-bottom: 1px solid #999; font-weight: bold;
+        }
+        .date-shifts { display: flex; }
+        .shift-cell {
+            flex: 1; padding: 2px; text-align: center;
+            font-size: 10px; border-right: 1px solid #ddd; font-weight: bold;
+        }
+        .shift-cell:last-child { border-right: none; }
+        
+        .date-col.weekend .date-day { background: #ffe0e0; color: red; }
+        .date-col.holiday .date-day { background: #ffcccc; color: red; }
+        .date-col.special .date-day { background: #cce5ff; color: blue; }
+        
+        .gantt-row {
+            display: flex; border: 1px solid #ddd;
+            margin-bottom: 1px; 
+            min-height: 103px;
+            position: relative;
+        }
+        
+        /* 🔥 임시 라인 행 스타일 */
+        .gantt-row.parking-row {
+            background: #fffbea;
+            border: 2px solid #ffc107;
+        }
+        
+        .gantt-line-area { display: flex; flex: 1; position: relative; }
+        .gantt-slot {
+            min-width: 90px;
+            border-left: 1px solid #e0e0e0; position: relative;
+        }
+        .gantt-slot.weekend { background: #fff5f5; }
+        .gantt-slot.holiday { background: #ffe8e8; }
+        .gantt-slot.special { background: #e8f4ff; }
+        
+        .gantt-bar {
+            position: absolute; 
+            height: 100px;
+            border-radius: 4px; 
+            padding: 4px 6px;
+            font-size: 10px; 
+            color: #333; 
+            font-weight: bold; 
+            cursor: move;
+            border: 2px solid rgba(0,0,0,0.2); 
+            display: flex;
+            flex-direction: column; 
+            justify-content: flex-start;
+            align-items: flex-start;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            z-index: 1; 
+            top: 2px;
+            overflow: hidden; 
+            word-wrap: break-word; 
+            text-align: left !important;
+            transition: border 0.3s ease;
+        }
+        .gantt-bar > * {
+            width: 100% !important;
+            text-align: left !important;
+            margin-left: 0 !important;
+            padding-left: 0 !important;
+        }
+        .gantt-bar > div {
+            width: 100%;
+            text-align: left;
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.3;
+        }
+        .gantt-bar:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 2; }
+        .gantt-bar.dragging { opacity: 0.6; cursor: grabbing; }
+        .gantt-bar.selected { 
+            border: 3px solid #2196F3; 
+            box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
+        }
+        .gantt-bar.pending-move {
+            border: 3px solid #f44336 !important;
+            box-shadow: 0 0 15px rgba(244, 67, 54, 0.6) !important;
+            animation: pulse-red 1s infinite;
+        }
+        
+        .gantt-bar.affected-move {
+            border: 3px solid #FFC107 !important;
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.6) !important;
+            animation: pulse-yellow 1s infinite;
+        }
+        
+        /* 🔥 임시 바 스타일 */
+        .gantt-bar.parked {
+            opacity: 0.7;
+            border: 2px dashed #999 !important;
+        }
+        
+        /* 🔥 ST 없음 경고 스타일 */
+        .gantt-bar.no-st-warning {
+            border: 3px solid #f44336 !important;
+            box-shadow: 0 0 15px rgba(244, 67, 54, 0.6) !important;
+        }
+        
+        .st-warning-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #f44336;
+            color: white;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 10;
+        }
+        
+        /* 🔥 임시 뱃지 */
+        .parking-badge {
+            position: absolute;
+            top: 80px;
+            left: 2px;
+            background: #FF9800;
+            color: white;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            z-index: 10;
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 15px rgba(244, 67, 54, 0.6); }
+            50% { box-shadow: 0 0 25px rgba(244, 67, 54, 0.9); }
+        }
+        
+        @keyframes pulse-yellow {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 193, 7, 0.6); }
+            50% { box-shadow: 0 0 25px rgba(255, 193, 7, 0.9); }
+        }
+        
+        .color-1 { background: rgb(255, 235, 180); }
+        .color-2 { background: rgb(255, 200, 220); }
+        .color-3 { background: rgb(200, 230, 255); }
+        .color-4 { background: rgb(220, 245, 200); }
+        .color-5 { background: rgb(220, 220, 220); }
+        .color-6 { 
+            background: repeating-linear-gradient(
+                45deg,
+                #d0d0d0,
+                #d0d0d0 8px,
+                #a0a0a0 8px,
+                #a0a0a0 10px
+            );
+        }
+        
+        .pcb-badge {
+            display: inline-block; 
+            padding: 1px 3px; 
+            background: #ff9800;
+            color: white; 
+            border-radius: 2px; 
+            font-size: 7px; 
+            margin-left: 0;
+            margin-right: 2px;
+            vertical-align: baseline;
+            font-weight: bold;
+            font-family: 'Malgun Gothic', 'Arial', sans-serif;
+        }
+        .pcb-badge.pcb-1st {
+            background: #4CAF50;
+        }
+        .pcb-badge.pcb-2nd {
+            background: #ff9800;
+        }
+        .pcb-badge.pcb-both {
+            background: #9C27B0;
+        }
+        .pcb-badge-small {
+            display: inline-block; 
+            padding: 1px 3px; 
+            background: #ff9800;
+            color: white; 
+            border-radius: 2px; 
+            font-size: 7px; 
+            margin-left: 1px;
+            margin-right: 1px;
+            vertical-align: baseline;
+            line-height: 1.3;
+            font-weight: bold;
+            font-family: 'Malgun Gothic', 'Arial', sans-serif;
+        }
+        .pcb-badge-small.pcb-1st {
+            background: #4CAF50;
+        }
+        .pcb-badge-small.pcb-2nd {
+            background: #ff9800;
+        }
+        .pcb-badge-small.pcb-both {
+            background: #9C27B0;
+        }
+        
+        #trashZone {
+            transition: all 0.2s;
+        }
+        #trashZone:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .efficiency-badge {
+            display: inline-block;
+            background: #FF9800;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            margin-left: 5px;
+        }
+        
+        .move-confirm-panel {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 300;
+            display: none;
+            border: 3px solid #f44336;
+        }
+        
+        .move-confirm-panel.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        /* 🔥 ST 없음 경고 스타일 */
+        .move-confirm-panel.st-warning {
+            border: 3px solid #f44336;
+        }
+        
+        /* 🔥 임시 라인 이동 스타일 */
+        .move-confirm-panel.parking-move {
+            border: 3px solid #FFC107;
+        }
+        
+        @keyframes slideDown {
+            from { top: 60px; opacity: 0; }
+            to { top: 100px; opacity: 1; }
+        }
+        
+        .notice-area {
+            display: flex;
+            border: 3px solid #000;
+            background: white;
+            min-height: 60px;
+            margin-top: 2px;
+        }
+        
+        .notice-label {
+            width: 40px;
+            font-weight: bold;
+            padding: 10px 5px;
+            text-align: center;
+            background: #fff3cd;
+            border-right: 3px solid #000;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+        }
+        
+        .notice-content {
+            flex: 1;
+            padding: 8px 15px;
+            color: red;
+            font-size: 13px;
+            font-weight: bold;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* 🔥 메모 숨김 기능 */
+        .memo-hidden .gantt-bar-memo {
+            display: none !important;
+        }
+        
+        /* 🔥 ST 없음 경고 스타일 */
+        .st-warning-input {
+            background: #ffe0e0 !important;
+            border: 2px solid #f44336 !important;
+        }
+        
+        /* 🖨️ 인쇄 시 색상 유지 */
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            
+            .gantt-bar {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .color-1, .color-2, .color-3, .color-4, .color-5, .color-6 {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .header {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .pcb-badge, .pcb-badge-small {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            /* 인쇄 시 불필요한 요소 숨기기 */
+            .header-controls,
+            .control-panel,
+            #trashZone,
+            .move-confirm-panel {
+                display: none !important;
+            }
+            
+            /* 간트차트 전체 표시 */
+            .gantt-container-wrapper {
+                margin-top: 0 !important;
+            }
+            
+            body {
+                overflow: visible !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏭 DI-TECH SMD 생산계획 차트</h1>
+        <div class="header-controls">
+            <input type="file" id="stFile" accept=".csv,.xlsx,.xls" style="display: none;">
+            <button class="btn btn-secondary" onclick="document.getElementById('stFile').click()">📂 ST 업로드 (CSV/Excel)</button>
+            <button class="btn btn-secondary" onclick="loadCSV()">📂 CSV 불러오기</button>
+            <button class="btn btn-secondary" onclick="exportCSV()">💾 CSV 저장</button>
+            <button class="btn btn-warning" onclick="cleanupPastWork()">🗑️ 과거 작업 정리</button>
+            <button class="btn btn-secondary" id="memoToggleBtn" onclick="toggleMemo()">👁️ 메모 숨김</button>
+            <input type="file" id="csvLoadFile" accept=".csv" style="display: none;">
+        </div>
+    </div>
+    
+    <div class="move-confirm-panel" id="moveConfirmPanel">
+        <div style="text-align: center; margin-bottom: 10px;">
+            <strong style="font-size: 14px; color: #f44336;">⚠️ 이동을 확정하시겠습니까?</strong>
+            <div id="moveInfo" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="btn btn-primary" onclick="confirmMove()" style="padding: 8px 20px;">✓ 확정</button>
+            <button class="btn btn-secondary" onclick="cancelMove()" style="padding: 8px 20px;">✗ 취소</button>
+        </div>
+    </div>
+    
+    <div class="main-layout">
+        <div class="full-container">
+            <div class="control-panel">
+                <div class="control-left">
+                    <div class="control-row">
+                        <div class="control-section">
+                            <label style="font-weight: bold; font-size: 11px; margin-right: 5px;">시작날짜:</label>
+                            <input type="date" id="startDate" style="padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                            <label style="font-weight: bold; font-size: 11px; margin-left: 10px; margin-right: 5px;">특근:</label>
+                            <input type="text" id="specialWork" placeholder="예: 10/25,10/26" style="padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px; width: 150px;">
+                            <label style="font-weight: bold; font-size: 11px; margin-left: 10px; margin-right: 5px;">휴일:</label>
+                            <input type="text" id="holidays" placeholder="예: 10/28,10/29" style="padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px; width: 150px;">
+                        </div>
+                        <div class="control-section">
+                            <button class="btn btn-secondary" onclick="zoomOut()">➖ 축소</button>
+                            <button class="btn btn-secondary" onclick="zoomIn()">➕ 확대</button>
+                            <span style="font-size: 11px; margin-left: 10px;">배율: <strong id="zoomLevel">100</strong>%</span>
+                            <button class="btn btn-primary" onclick="mergeSelected()" style="margin-left: 20px;">🔗 선택항목 묶음</button>
+                            <button class="btn btn-secondary" onclick="clearSelection()">✖️ 선택해제</button>
+                            <div id="trashZone" style="display: inline-block; margin-left: 20px; padding: 6px 12px; background: #f44336; color: white; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">
+                                🗑️ 휴지통
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-row">
+                        <input type="text" id="searchModel" placeholder="🔍 모델명 검색... (한글/영문)" style="width: 180px; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                        <input type="text" id="modelName" placeholder="📦 모델명/가칭" lang="en" style="width: 150px; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                        <select id="productionLine" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                            <option value="">라인</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="G">G</option>
+                        </select>
+                        <input type="number" id="quantity" placeholder="수량" lang="en" style="width: 100px; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                        <input type="number" id="duration" step="0.1" placeholder="소요일" lang="en" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                        <input type="text" id="pcbType" placeholder="PCB" lang="en" style="width: 70px; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                        <select id="color" style="width: 120px; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                            <option value="1" style="background: rgb(255, 235, 180);">🟨 노랑</option>
+                            <option value="2" style="background: rgb(255, 200, 220);">🩷 핑크</option>
+                            <option value="3" style="background: rgb(200, 230, 255);">🟦 파랑</option>
+                            <option value="4" style="background: rgb(220, 245, 200);">🟩 연두</option>
+                            <option value="5" style="background: rgb(220, 220, 220);">⬜ 회색</option>
+                            <option value="6">🚫 미가동</option>
+                        </select>
+                        <input type="text" id="memo" placeholder="메모" style="width: 120px; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                        <label style="display: flex; align-items: center; font-size: 11px; margin-left: 10px;">
+                            <input type="checkbox" id="nightOff" style="margin-right: 5px;">
+                            <span>주간전용</span>
+                        </label>
+                        <button class="btn btn-primary" onclick="addProduction()" style="margin-left: 10px;">➕ 추가</button>
+                    </div>
+                </div>
+                
+                <div class="control-right" style="margin-left: -100px;">
+                    <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 3px;">
+                        <label style="font-weight: bold; font-size: 11px; flex: 1;">📢 공지사항</label>
+                        <button class="btn btn-primary" onclick="updateNotice()" style="padding: 4px 10px; font-size: 11px;">📝 업데이트</button>
+                    </div>
+                    <textarea id="noticeText" placeholder="G라인 밑에 표시될 공지사항..." style="width: 100%; height: calc(100% - 40px); padding: 6px; border: 2px solid #FF9800; border-radius: 4px; font-size: 11px; resize: none; line-height: 1.4;"></textarea>
+                </div>
+                
+                <div class="model-list" id="modelList" style="display: none;"></div>
+            </div>
+            
+            <div class="gantt-container-wrapper">
+                <div class="gantt-chart" id="ganttChart" style="transform-origin: top left;">
+                    <div style="text-align: center; padding: 100px; color: #999;">
+                        <h2>간트차트가 여기에 표시됩니다</h2>
+                        <p>생산계획을 추가하면 자동으로 생성됩니다</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let stData = [];
+        let productionData = [];
+        let zoomLevel = 100;
+        let holidays = {};
+        let selectedModelData = null;
+        let currentBaseModelData = null;
+        let draggedBar = null;
+        let selectedBars = [];
+        let globalEventsInitialized = false;
+        let baseEfficiency = 0.65;
+        let noticeContent = '';
+        let originalCsvDate = null;
+        
+        let pendingMove = null;
+        
+        window.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('startDate').valueAsDate = new Date();
+            
+            const stFile = document.getElementById('stFile');
+            const searchInput = document.getElementById('searchModel');
+            const csvLoad = document.getElementById('csvLoadFile');
+            const startDateInput = document.getElementById('startDate');
+            const specialWorkInput = document.getElementById('specialWork');
+            const holidaysInput = document.getElementById('holidays');
+            
+            if (stFile) {
+                stFile.addEventListener('change', loadSTData);
+            }
+            if (searchInput) {
+                searchInput.addEventListener('input', searchModel);
+            }
+            if (csvLoad) {
+                csvLoad.addEventListener('change', importCSV);
+            }
+            
+            if (startDateInput) {
+                startDateInput.addEventListener('change', function() {
+                    if (productionData.length > 0) {
+                        generateGantt();
+                    }
+                });
+            }
+            
+            if (specialWorkInput) {
+                let specialWorkTimeout;
+                specialWorkInput.addEventListener('input', function() {
+                    clearTimeout(specialWorkTimeout);
+                    specialWorkTimeout = setTimeout(function() {
+                        if (productionData.length > 0) {
+                            generateGantt();
+                        }
+                    }, 500);
+                });
+            }
+            
+            if (holidaysInput) {
+                let holidayTimeout;
+                holidaysInput.addEventListener('input', function() {
+                    clearTimeout(holidayTimeout);
+                    holidayTimeout = setTimeout(function() {
+                        if (productionData.length > 0) {
+                            generateGantt();
+                        }
+                    }, 500);
+                });
+            }
+            
+            const quantityInput = document.getElementById('quantity');
+            const lineSelect = document.getElementById('productionLine');
+            const pcbInput = document.getElementById('pcbType');
+            const durationInput = document.getElementById('duration');
+            
+            if (quantityInput) {
+                quantityInput.addEventListener('input', recalculateST);
+            }
+            if (lineSelect) {
+                lineSelect.addEventListener('change', checkSTAvailability);
+            }
+            if (pcbInput) {
+                pcbInput.addEventListener('input', recalculateST);
+            }
+            
+            // 🔥 Delete 키 이벤트 리스너 추가
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Delete' && selectedBars.length > 0) {
+                    // 🔥 입력창/textarea에 포커스 있으면 차트 삭제 안 함
+                    const activeElement = document.activeElement;
+                    if (activeElement && 
+                        (activeElement.tagName === 'INPUT' || 
+                         activeElement.tagName === 'TEXTAREA')) {
+                        return; // 입력창에서는 텍스트만 삭제
+                    }
+                    
+                    deleteSelectedBars();
+                }
+            });
+        });
+        
+        // 🔥 선택된 바 삭제 함수
+        function deleteSelectedBars() {
+            if (selectedBars.length === 0) return;
+            
+            const confirmMsg = selectedBars.length === 1 
+                ? '선택한 작업을 삭제하시겠습니까?' 
+                : `선택한 ${selectedBars.length}개의 작업을 삭제하시겠습니까?`;
+            
+            if (!confirm(confirmMsg)) return;
+            
+            productionData = productionData.filter(p => !selectedBars.includes(p.id));
+            selectedBars = [];
+            generateGantt();
+        }
+        
+        // 🔥 입력창 드롭 존 설정 (간트바 → 입력창 드래그 기능)
+        
+        // 🔥 간트바 정보를 입력창에 채우기 (Shift+클릭용)
+        function fillInputFromProduction(prod) {
+            // 묶음된 항목은 첫 번째 항목 정보 사용
+            let modelName = prod.model;
+            let quantity = prod.quantity;
+            let duration = prod.duration;
+            let pcb = prod.pcb;
+            
+            if (prod.isMerged && prod.mergedData && prod.mergedData.length > 0) {
+                const firstItem = prod.mergedData[0];
+                modelName = firstItem.model;
+                quantity = firstItem.quantity;
+                duration = firstItem.duration;
+                pcb = firstItem.pcb;
+            }
+            
+            // 임시 라인인 경우 originalDuration 사용
+            if (prod.line === '임시' && prod.originalDuration) {
+                duration = prod.originalDuration;
+            }
+            
+            document.getElementById('modelName').value = modelName;
+            document.getElementById('quantity').value = quantity;
+            document.getElementById('duration').value = duration;
+            document.getElementById('pcbType').value = pcb || '';
+            document.getElementById('color').value = prod.color;
+            document.getElementById('memo').value = prod.memo || '';
+            document.getElementById('nightOff').checked = prod.nightOff || false;
+            
+            // 라인은 비워둠 (사용자가 선택하도록)
+            document.getElementById('productionLine').value = '';
+            
+            // 🔥 ST 데이터 검색해서 설정 (자동계산용)
+            currentBaseModelData = null;
+            
+            if (stData.length > 0) {
+                // 모델명으로 ST 데이터 찾기
+                const modelNameNoSpace = modelName.replace(/\s/g, '').toLowerCase();
+                
+                const foundData = stData.find(item => {
+                    const itemModelNoSpace = item.modelName.replace(/\s/g, '').toLowerCase();
+                    const itemNicknameNoSpace = item.nickname.replace(/\s/g, '').toLowerCase();
+                    
+                    return itemModelNoSpace === modelNameNoSpace || 
+                           itemNicknameNoSpace === modelNameNoSpace;
+                });
+                
+                if (foundData) {
+                    currentBaseModelData = {
+                        modelName: foundData.modelName,
+                        nickname: foundData.nickname
+                    };
+                } else {
+                    // ST 데이터 없으면 모델명만 설정
+                    currentBaseModelData = {
+                        modelName: modelName,
+                        nickname: modelName
+                    };
+                }
+            }
+            
+            // duration 입력란 초기화
+            const durationInput = document.getElementById('duration');
+            durationInput.classList.remove('st-warning-input');
+            durationInput.placeholder = '소요일';
+            
+            // 라인 선택란 포커스
+            document.getElementById('productionLine').focus();
+        }
+        
+        // 🔥 복사 완료 토스트 알림
+        function showCopyToast(modelName) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #4CAF50;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: bold;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideDown 0.3s ease;
+            `;
+            toast.textContent = '📋 ' + modelName + ' 정보 복사됨!';
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 2000);
+        }
+        
+        function updateNotice() {
+            noticeContent = document.getElementById('noticeText').value;
+            generateGantt();
+        }
+        
+        // 🔥 입력창에서 라인 변경 시 ST 유무 확인
+        function checkSTAvailability() {
+            if (!currentBaseModelData) {
+                recalculateST();
+                return;
+            }
+            
+            const selectedLine = document.getElementById('productionLine').value;
+            const inputQuantity = parseInt(document.getElementById('quantity').value) || 0;
+            const currentPcb = document.getElementById('pcbType').value.trim();
+            const durationInput = document.getElementById('duration');
+            
+            if (!selectedLine || inputQuantity === 0) {
+                durationInput.style.background = '';
+                durationInput.style.border = '';
+                durationInput.placeholder = '소요일';
+                return;
+            }
+            
+            // PCB 타입 변환
+            let pcbToFind = currentPcb;
+            if (currentPcb === '1') {
+                pcbToFind = '1차';
+            } else if (currentPcb === '2') {
+                pcbToFind = '2차';
+            } else if (currentPcb === '12' || currentPcb === '1/2') {
+                pcbToFind = '1/2차';
+            }
+            
+            // ST 데이터 확인
+            let stExists = false;
+            
+            if (pcbToFind === '1/2차') {
+                const lineModel1st = stData.find(item => 
+                    item.modelName === currentBaseModelData.modelName && 
+                    item.line === selectedLine &&
+                    item.pcb === '1차'
+                );
+                const lineModel2nd = stData.find(item => 
+                    item.modelName === currentBaseModelData.modelName && 
+                    item.line === selectedLine &&
+                    item.pcb === '2차'
+                );
+                stExists = lineModel1st || lineModel2nd;
+            } else {
+                const lineModel = stData.find(item => 
+                    item.modelName === currentBaseModelData.modelName && 
+                    item.line === selectedLine &&
+                    item.pcb === pcbToFind
+                );
+                stExists = !!lineModel;
+            }
+            
+            if (stExists) {
+                // ST 있음: 정상 스타일 + 자동계산
+                durationInput.classList.remove('st-warning-input');
+                durationInput.placeholder = '소요일';
+                recalculateST();
+            } else {
+                // ST 없음: 경고 스타일 + 초기화
+                durationInput.classList.add('st-warning-input');
+                durationInput.value = '';
+                durationInput.placeholder = '⚠️ ST없음-직접입력';
+            }
+        }
+        
+        function recalculateST() {
+            if (!currentBaseModelData) return;
+            
+            const selectedLine = document.getElementById('productionLine').value;
+            const inputQuantity = parseInt(document.getElementById('quantity').value) || 0;
+            const currentPcb = document.getElementById('pcbType').value.trim();
+            const durationInput = document.getElementById('duration');
+            
+            if (!selectedLine || inputQuantity === 0) return;
+            
+            // PCB 타입 변환
+            let pcbToFind = currentPcb;
+            if (currentPcb === '1') {
+                pcbToFind = '1차';
+            } else if (currentPcb === '2') {
+                pcbToFind = '2차';
+            } else if (currentPcb === '12' || currentPcb === '1/2') {
+                pcbToFind = '1/2차';
+            }
+            
+            // 양면(1/2차)인 경우 1차 + 2차 합산
+            if (pcbToFind === '1/2차') {
+                const lineModel1st = stData.find(item => 
+                    item.modelName === currentBaseModelData.modelName && 
+                    item.line === selectedLine &&
+                    item.pcb === '1차'
+                );
+                
+                const lineModel2nd = stData.find(item => 
+                    item.modelName === currentBaseModelData.modelName && 
+                    item.line === selectedLine &&
+                    item.pcb === '2차'
+                );
+                
+                let totalDuration = 0;
+                let found = false;
+                
+                // 1차 계산
+                if (lineModel1st) {
+                    let duration1st = 0;
+                    
+                    if (lineModel1st.quantity > 0) {
+                        const ratio1st = inputQuantity / lineModel1st.quantity;
+                        duration1st = lineModel1st.duration * ratio1st;
+                    } else if (lineModel1st.stValue > 0 && lineModel1st.efficiency > 0) {
+                        duration1st = inputQuantity / (60 / lineModel1st.stValue * 10 * lineModel1st.efficiency);
+                    }
+                    
+                    if (duration1st > 0) {
+                        totalDuration += duration1st;
+                        found = true;
+                    }
+                }
+                
+                // 2차 계산
+                if (lineModel2nd) {
+                    let duration2nd = 0;
+                    
+                    if (lineModel2nd.quantity > 0) {
+                        const ratio2nd = inputQuantity / lineModel2nd.quantity;
+                        duration2nd = lineModel2nd.duration * ratio2nd;
+                    } else if (lineModel2nd.stValue > 0 && lineModel2nd.efficiency > 0) {
+                        duration2nd = inputQuantity / (60 / lineModel2nd.stValue * 10 * lineModel2nd.efficiency);
+                    }
+                    
+                    if (duration2nd > 0) {
+                        totalDuration += duration2nd;
+                        found = true;
+                    }
+                }
+                
+                if (found) {
+                    durationInput.value = totalDuration.toFixed(1);
+                    durationInput.classList.remove('st-warning-input');
+                }
+                return;
+            }
+            
+            // 단면(1차 또는 2차)인 경우
+            const lineModel = stData.find(item => 
+                item.modelName === currentBaseModelData.modelName && 
+                item.line === selectedLine &&
+                item.pcb === pcbToFind
+            );
+            
+            if (!lineModel) {
+                return;
+            }
+            
+            let calculatedDuration = 0;
+            
+            if (lineModel.quantity > 0) {
+                const ratio = inputQuantity / lineModel.quantity;
+                calculatedDuration = lineModel.duration * ratio;
+            } 
+            else if (lineModel.stValue > 0 && lineModel.efficiency > 0) {
+                calculatedDuration = inputQuantity / (60 / lineModel.stValue * 10 * lineModel.efficiency);
+            } 
+            else {
+                return;
+            }
+            
+            durationInput.value = calculatedDuration.toFixed(1);
+            durationInput.classList.remove('st-warning-input');
+        }
+        
+        // 🔥 수정 모달용 ST 계산 함수
+        function recalculateSTInModal(prodId) {
+            const prod = productionData.find(p => p.id === prodId);
+            if (!prod) return;
+            
+            const selectedLine = document.getElementById('edit_line').value;
+            const inputQuantity = parseInt(document.getElementById('edit_qty').value) || 0;
+            const currentPcb = document.getElementById('edit_pcb').value.trim();
+            const durationInput = document.getElementById('edit_dur');
+            
+            // 🔥 임시 라인은 자동계산 안 함
+            if (selectedLine === '임시') {
+                durationInput.value = '1';
+                durationInput.classList.remove('st-warning-input');
+                durationInput.placeholder = '소요일';
+                return;
+            }
+            
+            if (!selectedLine || inputQuantity === 0) return;
+            
+            // PCB 타입 변환
+            let pcbToFind = currentPcb;
+            if (currentPcb === '1') {
+                pcbToFind = '1차';
+            } else if (currentPcb === '2') {
+                pcbToFind = '2차';
+            } else if (currentPcb === '12' || currentPcb === '1/2') {
+                pcbToFind = '1/2차';
+            }
+            
+            // 모델명으로 ST 찾기
+            let baseModelName = prod.model;
+            if (prod.isMerged && prod.mergedData && prod.mergedData.length > 0) {
+                baseModelName = prod.mergedData[0].model;
+            }
+            
+            // 양면(1/2차)인 경우
+            if (pcbToFind === '1/2차') {
+                const lineModel1st = stData.find(item => 
+                    (item.modelName === baseModelName || item.nickname === baseModelName) && 
+                    item.line === selectedLine &&
+                    item.pcb === '1차'
+                );
+                
+                const lineModel2nd = stData.find(item => 
+                    (item.modelName === baseModelName || item.nickname === baseModelName) && 
+                    item.line === selectedLine &&
+                    item.pcb === '2차'
+                );
+                
+                let totalDuration = 0;
+                let found = false;
+                
+                if (lineModel1st) {
+                    let duration1st = 0;
+                    if (lineModel1st.quantity > 0) {
+                        const ratio1st = inputQuantity / lineModel1st.quantity;
+                        duration1st = lineModel1st.duration * ratio1st;
+                    } else if (lineModel1st.stValue > 0 && lineModel1st.efficiency > 0) {
+                        duration1st = inputQuantity / (60 / lineModel1st.stValue * 10 * lineModel1st.efficiency);
+                    }
+                    if (duration1st > 0) {
+                        totalDuration += duration1st;
+                        found = true;
+                    }
+                }
+                
+                if (lineModel2nd) {
+                    let duration2nd = 0;
+                    if (lineModel2nd.quantity > 0) {
+                        const ratio2nd = inputQuantity / lineModel2nd.quantity;
+                        duration2nd = lineModel2nd.duration * ratio2nd;
+                    } else if (lineModel2nd.stValue > 0 && lineModel2nd.efficiency > 0) {
+                        duration2nd = inputQuantity / (60 / lineModel2nd.stValue * 10 * lineModel2nd.efficiency);
+                    }
+                    if (duration2nd > 0) {
+                        totalDuration += duration2nd;
+                        found = true;
+                    }
+                }
+                
+                if (found) {
+                    durationInput.value = totalDuration.toFixed(1);
+                    durationInput.classList.remove('st-warning-input');
+                    durationInput.placeholder = '소요일';
+                } else {
+                    durationInput.classList.add('st-warning-input');
+                    durationInput.placeholder = '⚠️ ST없음-직접입력';
+                }
+                return;
+            }
+            
+            // 단면인 경우
+            const lineModel = stData.find(item => 
+                (item.modelName === baseModelName || item.nickname === baseModelName) && 
+                item.line === selectedLine &&
+                item.pcb === pcbToFind
+            );
+            
+            if (!lineModel) {
+                durationInput.classList.add('st-warning-input');
+                durationInput.placeholder = '⚠️ ST없음-직접입력';
+                return;
+            }
+            
+            let calculatedDuration = 0;
+            
+            if (lineModel.quantity > 0) {
+                const ratio = inputQuantity / lineModel.quantity;
+                calculatedDuration = lineModel.duration * ratio;
+            } 
+            else if (lineModel.stValue > 0 && lineModel.efficiency > 0) {
+                calculatedDuration = inputQuantity / (60 / lineModel.stValue * 10 * lineModel.efficiency);
+            } 
+            else {
+                durationInput.classList.add('st-warning-input');
+                durationInput.placeholder = '⚠️ ST없음-직접입력';
+                return;
+            }
+            
+            durationInput.value = calculatedDuration.toFixed(1);
+            durationInput.classList.remove('st-warning-input');
+            durationInput.placeholder = '소요일';
+        }
+        
+        function loadSTData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const fileName = file.name.toLowerCase();
+            
+            if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                loadExcelSTData(file);
+            } else if (fileName.endsWith('.csv')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    
+                    if (text.includes(' ') || text.includes('\ufffd')) {
+                        console.log('⚠️ UTF-8 인코딩 실패, EUC-KR 시도...');
+                        const reader2 = new FileReader();
+                        reader2.onload = function(e2) {
+                            parseSTCSV(e2.target.result);
+                        };
+                        reader2.readAsText(file, 'EUC-KR');
+                    } else {
+                        parseSTCSV(text);
+                    }
+                };
+                reader.onerror = function() {
+                    console.log('⚠️ UTF-8 읽기 실패, EUC-KR로 재시도...');
+                    const reader2 = new FileReader();
+                    reader2.onload = function(e) {
+                        parseSTCSV(e.target.result);
+                    };
+                    reader2.readAsText(file, 'EUC-KR');
+                };
+                reader.readAsText(file, 'UTF-8');
+            } else {
+                alert('⚠️ CSV 또는 Excel 파일만 업로드 가능합니다!');
+            }
+        }
+        
+        function loadExcelSTData(file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+                        header: 1,
+                        raw: false,
+                        defval: ''
+                    });
+                    
+                    console.log('✅ 엑셀 데이터 읽기 성공:', jsonData.length + '행');
+                    parseSTData(jsonData);
+                    
+                } catch (error) {
+                    alert('❌ 엑셀 파일 읽기 오류: ' + error.message);
+                    console.error(error);
+                }
+            };
+            
+            reader.onerror = function() {
+                alert('❌ 파일 읽기 실패!');
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function parseSTData(rows) {
+            try {
+                stData = [];
+                let skippedCount = 0;
+                
+                let baseEfficiency = 0.65;
+                if (rows.length > 0) {
+                    const headerRow = rows[0];
+                    if (headerRow.length > 16 && headerRow[16]) {
+                        const q1Value = parseFloat(headerRow[16]);
+                        if (!isNaN(q1Value) && q1Value > 0) {
+                            baseEfficiency = q1Value > 1 ? q1Value / 100 : q1Value;
+                            console.log('헤더에서 기본 효율(Q1):', (baseEfficiency * 100) + '%');
+                        }
+                    }
+                }
+                
+                for (let i = 1; i < rows.length; i++) {
+                    const cells = rows[i];
+                    
+                    if (!cells || cells.length < 10) {
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    const modelName = (cells[0] || '').toString().trim();
+                    if (!modelName) {
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    let lineName = (cells[3] || '').toString().trim();
+                    let pcbInfo = (cells[2] || '').toString().trim();
+                    let pcbDisplay = '';
+                    
+                    if (pcbInfo.includes(' ')) {
+                        const parts = pcbInfo.split(' ');
+                        const pcbPart = parts[0];
+                        const linePart = parts[1];
+                        
+                        if (pcbPart === '2') {
+                            pcbDisplay = '2차';
+                        } else if (pcbPart === '1') {
+                            pcbDisplay = '1차';
+                        }
+                        
+                        if (linePart && !lineName) {
+                            lineName = linePart;
+                        }
+                    } else {
+                        if (pcbInfo === '2' || pcbInfo.startsWith('2 ')) {
+                            pcbDisplay = '2차';
+                        } else if (pcbInfo === '1' || pcbInfo.startsWith('1 ')) {
+                            pcbDisplay = '1차';
+                        } else if (pcbInfo === '(1)') {
+                            pcbDisplay = '1차';
+                        } else if (pcbInfo === '(2)') {
+                            pcbDisplay = '2차';
+                        }
+                    }
+                    
+                    const stValue = parseFloat(cells[5]) || 0;
+                    const quantity = parseFloat(cells[9]) || 0;
+                    
+                    let efficiency = baseEfficiency;
+                    if (cells[16] && cells[16].toString().trim() !== '') {
+                        const modelEff = parseFloat(cells[16]);
+                        if (!isNaN(modelEff) && modelEff > 0) {
+                            efficiency = modelEff > 1 ? modelEff / 100 : modelEff;
+                        }
+                    }
+                    
+                    let duration = 0;
+                    if (stValue > 0 && quantity > 0 && efficiency > 0) {
+                        duration = quantity / (60 / stValue * 10 * efficiency);
+                    }
+                    
+                    const nickname = (cells[17] || modelName).toString().trim() || modelName;
+                    
+                    stData.push({
+                        modelName: modelName,
+                        nickname: nickname,
+                        line: lineName || '',
+                        quantity: quantity,
+                        duration: duration,
+                        pcb: pcbDisplay,
+                        stValue: stValue,
+                        efficiency: efficiency
+                    });
+                }
+                
+                if (stData.length === 0) {
+                    alert('⚠️ ST 데이터 0개!');
+                } else {
+                    alert('✅ ST 데이터 ' + stData.length + '개 로드 완료!\n기본 효율: ' + (baseEfficiency * 100) + '%\n건너뛴 데이터: ' + skippedCount + '개');
+                }
+            } catch (error) {
+                alert('❌ 데이터 파싱 오류: ' + error.message);
+                console.error(error);
+            }
+        }
+        
+        function parseSTCSV(text) {
+            const lines = text.split('\n');
+            const rows = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const cells = parseCSVLine(line);
+                rows.push(cells);
+            }
+            
+            parseSTData(rows);
+        }
+        
+        function parseCSVLine(line) {
+            const cells = [];
+            let current = '';
+            let inQuotes = false;
+            let i = 0;
+            
+            while (i < line.length) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+                        current += '"';
+                        i += 2;
+                        continue;
+                    } else {
+                        inQuotes = !inQuotes;
+                        i++;
+                        continue;
+                    }
+                }
+                
+                if (char === ',' && !inQuotes) {
+                    cells.push(current);
+                    current = '';
+                    i++;
+                    continue;
+                }
+                
+                current += char;
+                i++;
+            }
+            
+            cells.push(current);
+            return cells;
+        }
+        
+        function searchModel() {
+            const searchText = document.getElementById('searchModel').value.trim();
+            const modelList = document.getElementById('modelList');
+            
+            if (!searchText) {
+                modelList.innerHTML = '';
+                modelList.style.display = 'none';
+                return;
+            }
+            
+            if (stData.length === 0) {
+                modelList.innerHTML = '<div class="model-item" style="color: #999; text-align: center; cursor: default;">먼저 ST 파일을 업로드하세요</div>';
+                modelList.style.display = 'block';
+                return;
+            }
+            
+            let pcbFilter = '';
+            let cleanSearchText = searchText;
+            
+            const searchNoSpaceTmp = searchText.replace(/\s/g, '');
+            if (/[12]$/.test(searchNoSpaceTmp)) {
+                if (searchNoSpaceTmp.endsWith('1')) {
+                    pcbFilter = '1차';
+                    cleanSearchText = searchNoSpaceTmp.slice(0, -1);
+                } else if (searchNoSpaceTmp.endsWith('2')) {
+                    pcbFilter = '2차';
+                    cleanSearchText = searchNoSpaceTmp.slice(0, -1);
+                }
+            }
+            
+            function generateAbbr(text) {
+                return text.split(/\s+/)
+                    .map(word => word.charAt(0))
+                    .join('')
+                    .toLowerCase();
+            }
+            
+            const filtered = stData.filter(item => {
+                const modelNameNoSpace = item.modelName.replace(/\s/g, '').toLowerCase();
+                const nicknameNoSpace = item.nickname.replace(/\s/g, '').toLowerCase();
+                const searchNoSpace = cleanSearchText.replace(/\s/g, '').toLowerCase();
+                
+                const modelAbbr = generateAbbr(item.modelName);
+                const nicknameAbbr = generateAbbr(item.nickname);
+                
+                const modelMatches = modelNameNoSpace.includes(searchNoSpace) || 
+                                   nicknameNoSpace.includes(searchNoSpace) ||
+                                   modelAbbr.includes(searchNoSpace) ||
+                                   nicknameAbbr.includes(searchNoSpace);
+                
+                if (pcbFilter) {
+                    return modelMatches && item.pcb === pcbFilter;
+                }
+                
+                return modelMatches;
+            });
+            
+            const grouped = {};
+            filtered.forEach(item => {
+                if (!grouped[item.modelName]) {
+                    grouped[item.modelName] = [];
+                }
+                grouped[item.modelName].push(item);
+            });
+            
+            let html = '';
+            const allLines = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+            
+            Object.keys(grouped).sort().forEach(modelName => {
+                const items = grouped[modelName].sort((a, b) => {
+                    if (!a.line) return 1;
+                    if (!b.line) return -1;
+                    const lineCompare = a.line.localeCompare(b.line);
+                    if (lineCompare !== 0) return lineCompare;
+                    return (a.pcb || '').localeCompare(b.pcb || '');
+                });
+                
+                const itemsWithLine = items.filter(item => item.line);
+                
+                if (itemsWithLine.length > 0) {
+                    allLines.forEach(line => {
+                        const lineItems = items.filter(item => item.line === line);
+                        
+                        lineItems.forEach((lineItem, idx) => {
+                            const duration = parseFloat(lineItem.duration) || 0;
+                            const durationText = duration > 0 ? duration.toFixed(1) + ' Shift' : '정보없음';
+                            const effText = lineItem.efficiency ? (lineItem.efficiency * 100).toFixed(0) + '%' : '';
+                            const effBadge = effText && lineItem.efficiency !== baseEfficiency ? 
+                                '<span class="efficiency-badge">' + effText + '</span>' : '';
+                            
+                            let pcbClass = 'pcb-badge';
+                            if (lineItem.pcb === '1차') {
+                                pcbClass += ' pcb-1st';
+                            } else if (lineItem.pcb === '2차') {
+                                pcbClass += ' pcb-2nd';
+                            }
+                            
+                            const pcbDisplay = lineItem.pcb ? '<span class="' + pcbClass + '">' + lineItem.pcb + '</span>' : '';
+                            
+                            html += '<div class="model-item" onclick=\'selectModel(' + 
+                                JSON.stringify(lineItem).replace(/'/g, "\\'") + ')\'>' +
+                                modelName + '  ' + line + '라인 ' + pcbDisplay + ' ' + durationText + effBadge + '</div>';
+                        });
+                    });
+                } else {
+                    const firstItem = items[0];
+                    const duration = parseFloat(firstItem.duration) || 0;
+                    const durationText = duration > 0 ? duration.toFixed(1) + ' Shift' : '정보없음';
+                    const effText = firstItem.efficiency ? (firstItem.efficiency * 100).toFixed(0) + '%' : '';
+                    const effBadge = effText && firstItem.efficiency !== baseEfficiency ? 
+                        '<span class="efficiency-badge">' + effText + '</span>' : '';
+                    
+                    html += '<div class="model-item" onclick=\'selectModel(' + 
+                        JSON.stringify(firstItem).replace(/'/g, "\\'") + ')\'>' +
+                        modelName + ' (라인 정보 없음) ' + durationText + effBadge + '</div>';
+                }
+            });
+            
+            if (Object.keys(grouped).length === 0) {
+                html += '<div class="model-item" style="color: #999; text-align: center; cursor: default;">검색 결과가 없습니다</div>';
+            }
+            
+            modelList.innerHTML = html;
+            modelList.style.display = 'block';
+        }
+        
+        function selectModel(item) {
+            selectedModelData = item;
+            currentBaseModelData = item;
+            document.getElementById('modelName').value = item.nickname || item.modelName;
+            document.getElementById('productionLine').value = item.line;
+            document.getElementById('quantity').value = item.quantity;
+            document.getElementById('duration').value = item.duration.toFixed(1);
+            document.getElementById('pcbType').value = item.pcb;
+            document.getElementById('modelList').innerHTML = '';
+            document.getElementById('modelList').style.display = 'none';
+            document.getElementById('searchModel').value = '';
+        }
+        
+        function addProduction() {
+            const model = document.getElementById('modelName').value;
+            const line = document.getElementById('productionLine').value;
+            const qty = document.getElementById('quantity').value;
+            const dur = document.getElementById('duration').value;
+            const pcb = document.getElementById('pcbType').value;
+            const color = document.getElementById('color').value;
+            const memo = document.getElementById('memo').value;
+            const nightOff = document.getElementById('nightOff').checked;
+            
+            let convertedPcb = pcb.trim();
+            if (convertedPcb === '1') {
+                convertedPcb = '1차';
+            } else if (convertedPcb === '2') {
+                convertedPcb = '2차';
+            } else if (convertedPcb === '12' || convertedPcb === '1/2') {
+                convertedPcb = '1/2차';
+            }
+            if (!model || !line || !qty || !dur) {
+                alert('⚠️ 필수 항목을 입력하세요!');
+                return;
+            }
+            
+            const sameLineProds = productionData.filter(p => p.line === line);
+            const maxOrder = sameLineProds.length > 0 
+                ? Math.max(...sameLineProds.map(p => p.order)) 
+                : -1;
+            
+            const production = {
+                id: Date.now(),
+                line: line,
+                model: model,
+                quantity: parseInt(qty),
+                duration: parseFloat(dur),
+                pcb: convertedPcb,
+                color: color,
+                memo: memo,
+                nightOff: nightOff,
+                order: maxOrder + 1
+            };
+            
+            productionData.push(production);
+            clearForm();
+            generateGantt();
+        }
+        
+        function clearForm() {
+            document.getElementById('searchModel').value = '';
+            document.getElementById('modelName').value = '';
+            document.getElementById('productionLine').value = '';
+            document.getElementById('quantity').value = '';
+            const durationInput = document.getElementById('duration');
+            durationInput.value = '';
+            durationInput.classList.remove('st-warning-input');
+            durationInput.placeholder = '소요일';
+            document.getElementById('pcbType').value = '';
+            document.getElementById('memo').value = '';
+            document.getElementById('nightOff').checked = false;
+            selectedModelData = null;
+            currentBaseModelData = null;
+        }
+        
+        function parseHolidays() {
+            holidays = {};
+            
+            const startDateStr = document.getElementById('startDate').value;
+            if (!startDateStr) return;
+            const year = new Date(startDateStr).getFullYear();
+            
+            const specialWorkText = document.getElementById('specialWork').value;
+            if (specialWorkText) {
+                const dates = specialWorkText.split(',');
+                dates.forEach(date => {
+                    const trimmed = date.trim();
+                    if (trimmed) {
+                        const parts = trimmed.split('/');
+                        if (parts.length === 2) {
+                            const month = parts[0].padStart(2, '0');
+                            const day = parts[1].padStart(2, '0');
+                            const fullDate = year + '-' + month + '-' + day;
+                            holidays[fullDate] = '특근';
+                        }
+                    }
+                });
+            }
+            
+            const holidayText = document.getElementById('holidays').value;
+            if (holidayText) {
+                const dates = holidayText.split(',');
+                dates.forEach(date => {
+                    const trimmed = date.trim();
+                    if (trimmed) {
+                        const parts = trimmed.split('/');
+                        if (parts.length === 2) {
+                            const month = parts[0].padStart(2, '0');
+                            const day = parts[1].padStart(2, '0');
+                            const fullDate = year + '-' + month + '-' + day;
+                            holidays[fullDate] = '휴무';
+                        }
+                    }
+                });
+            }
+        }
+        
+        function generateGantt() {
+            parseHolidays();
+            
+            const startDateStr = document.getElementById('startDate').value;
+            if (!startDateStr) {
+                alert('⚠️ 시작 날짜를 입력하세요!');
+                return;
+            }
+            
+            const startDate = new Date(startDateStr);
+            const days = 30;
+            const lines = ['A', 'B', 'C', 'D', 'E', 'F', 'G']; // 🔥 임시 라인은 별도 처리
+            
+            let html = '<div class="gantt-header"><div class="line-label">라인</div><div class="date-header">';
+            
+            for (let i = 0; i < days; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
+                const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                const dayName = dayNames[date.getDay()];
+                const dateStr = date.toISOString().split('T')[0];
+                
+                let colClass = 'date-col';
+                let isHoliday = false;
+                
+                if (holidays[dateStr] === '휴무') {
+                    colClass += ' holiday';
+                    isHoliday = true;
+                } else if (holidays[dateStr] === '특근') {
+                    colClass += ' special';
+                } else if (date.getDay() === 0 || date.getDay() === 6) {
+                    colClass += ' weekend';
+                    isHoliday = true;
+                }
+                
+                html += '<div class="' + colClass + '">' +
+                    '<div class="date-day">' + (date.getMonth()+1) + '/' + date.getDate() + ' (' + dayName + ')</div>' +
+                    '<div class="date-shifts">' +
+                    '<div class="shift-cell" style="' + (isHoliday ? 'color: red;' : '') + '">' + (isHoliday ? '휴무' : '주간') + '</div>' +
+                    '<div class="shift-cell" style="' + (isHoliday ? 'color: red;' : '') + '">' + (isHoliday ? '휴무' : '야간') + '</div>' +
+                    '</div></div>';
+            }
+            
+            html += '</div></div>';
+            
+            // 🔥 일반 라인 (A~G) 생성
+            lines.forEach(line => {
+                const lineProds = productionData.filter(p => p.line === line).sort((a, b) => a.order - b.order);
+                
+                html += '<div class="gantt-row">' +
+                    '<div class="line-label">라인 ' + line + '</div>' +
+                    '<div class="gantt-line-area" data-line="' + line + '">';
+                
+                let slotIndex = 0;
+                for (let i = 0; i < days; i++) {
+                    const date = new Date(startDate);
+                    date.setDate(date.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    
+                    let isHoliday = false;
+                    let cellClass = 'gantt-slot';
+                    
+                    if (holidays[dateStr] === '휴무' || date.getDay() === 0 || date.getDay() === 6) {
+                        isHoliday = true;
+                        cellClass += ' holiday';
+                    }
+                    
+                    if (holidays[dateStr] === '특근') cellClass += ' special';
+                    
+                    html += '<div class="' + cellClass + '" data-slot="' + slotIndex + '"></div>';
+                    slotIndex++;
+                    html += '<div class="' + cellClass + '" data-slot="' + slotIndex + '"></div>';
+                    slotIndex++;
+                }
+                
+                html += renderBarsForLine(lineProds, line, startDate, days);
+                html += '</div></div>';
+            });
+            
+            // 🔥 공지사항
+            html += '<div class="notice-area">' +
+                '<div class="notice-label">공지</div>' +
+                '<div class="notice-content">' + (noticeContent || '공지사항이 없습니다.') + '</div>' +
+                '</div>';
+            
+            // 🔥 임시 라인 생성
+            const parkingProds = productionData.filter(p => p.line === '임시').sort((a, b) => a.order - b.order);
+            
+            html += '<div class="gantt-row parking-row">' +
+                '<div class="line-label parking-line">임시</div>' +
+                '<div class="gantt-line-area" data-line="임시">';
+            
+            let parkingSlotIndex = 0;
+            for (let i = 0; i < days; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                let cellClass = 'gantt-slot';
+                
+                html += '<div class="' + cellClass + '" data-slot="' + parkingSlotIndex + '"></div>';
+                parkingSlotIndex++;
+                html += '<div class="' + cellClass + '" data-slot="' + parkingSlotIndex + '"></div>';
+                parkingSlotIndex++;
+            }
+            
+            html += renderBarsForLine(parkingProds, '임시', startDate, days, true);
+            html += '</div></div>';
+            
+            document.getElementById('ganttChart').innerHTML = html;
+            console.log('간트차트 생성 완료');
+            
+            setTimeout(function() {
+                const testBars = document.querySelectorAll('.gantt-bar');
+                console.log('생성된 간트바 개수:', testBars.length);
+                enableBarDrag();
+            }, 100);
+        }
+        
+        // 🔥 라인별 바 렌더링 함수
+        function renderBarsForLine(lineProds, line, startDate, days, isParking = false) {
+            let html = '';
+            let currentSlot = 0;
+            
+            lineProds.forEach(prod => {
+                const skipNight = prod.nightOff;
+                let slotsNeeded = Math.ceil(prod.duration);
+                let scheduledSlots = 0;
+                let checkSlot = currentSlot;
+                let blockStart = -1;
+                let blocks = [];
+                
+                // 🔥 임시 라인은 무조건 1 SHIFT
+                if (isParking) {
+                    blocks.push({start: 0, end: 0});
+                } else {
+                    while (scheduledSlots < slotsNeeded && checkSlot < days * 2) {
+                        const slotDateIndex = Math.floor(checkSlot / 2);
+                        const slotShiftIndex = checkSlot % 2;
+                        
+                        if (slotDateIndex >= days) break;
+                        
+                        const checkDate = new Date(startDate);
+                        checkDate.setDate(checkDate.getDate() + slotDateIndex);
+                        const checkDateStr = checkDate.toISOString().split('T')[0];
+                        
+                        const isHoliday = holidays[checkDateStr] === '휴무' ||
+                                        ((checkDate.getDay() === 0 || checkDate.getDay() === 6) &&
+                                        holidays[checkDateStr] !== '특근');
+                        
+                        if (isHoliday) {
+                            if (blockStart >= 0) {
+                                blocks.push({start: blockStart, end: checkSlot - 1});
+                                blockStart = -1;
+                            }
+                            checkSlot++;
+                            continue;
+                        }
+                        
+                        if (skipNight && slotShiftIndex === 1) {
+                            if (blockStart >= 0) {
+                                blocks.push({start: blockStart, end: checkSlot - 1});
+                                blockStart = -1;
+                            }
+                            checkSlot++;
+                            continue;
+                        }
+                        
+                        if (blockStart === -1) blockStart = checkSlot;
+                        scheduledSlots++;
+                        checkSlot++;
+                    }
+                    
+                    if (blockStart >= 0) {
+                        blocks.push({start: blockStart, end: checkSlot - 1});
+                    }
+                }
+                
+                blocks.forEach(block => {
+                    const slotWidth = 90;
+                    const width = isParking ? slotWidth : ((block.end - block.start + 1) * slotWidth);
+                    const left = isParking ? (currentSlot * slotWidth) : (block.start * slotWidth);
+                    
+                    let pendingClass = '';
+                    let stWarningBadge = '';
+                    let parkingBadge = '';
+                    
+                    // 🔥 임시 바 스타일
+                    if (isParking) {
+                        pendingClass += ' parked';
+                        if (prod.originalDuration) {
+                            parkingBadge = '<div class="parking-badge">원래: ' + prod.originalDuration.toFixed(1) + 'S</div>';
+                        }
+                    }
+                    
+                    if (pendingMove) {
+                        if (pendingMove.barId === prod.id) {
+                            pendingClass += ' pending-move';
+                            if (pendingMove.noST) {
+                                pendingClass += ' no-st-warning';
+                                stWarningBadge = '<div class="st-warning-badge">⚠️ ST없음</div>';
+                            }
+                        } else if (pendingMove.affectedIds && pendingMove.affectedIds.includes(prod.id)) {
+                            pendingClass += ' affected-move';
+                        }
+                    }
+                    
+                    html += '<div class="gantt-bar color-' + prod.color + pendingClass + '" ' +
+                        'style="width: ' + width + 'px; left: ' + left + 'px;" ' +
+                        'draggable="true" data-id="' + prod.id + '" data-line="' + line + '" ' +
+                        'data-start-slot="' + block.start + '" data-order="' + prod.order + '">' +
+                        stWarningBadge + parkingBadge;
+                    
+                    const modelText = prod.model;
+                    let fontSize = 10;
+                    const charCount = modelText.length;
+                    
+                    if (charCount > 150) {
+                        fontSize = 9;
+                    } else if (charCount > 120) {
+                        fontSize = 9.5;
+                    }
+                    
+                    if (prod.isMerged) {
+                        let displayHtml = modelText;
+                        
+                        displayHtml = displayHtml.replace(/1\s*\/\s*2\s*차/g, '<span class="pcb-badge-small pcb-both">양면</span>');
+                        
+                        displayHtml = displayHtml.replace(/(\d차)/g, function(match) {
+                            let pcbClass = 'pcb-badge-small';
+                            if (match === '1차') {
+                                pcbClass += ' pcb-1st';
+                            } else if (match === '2차') {
+                                pcbClass += ' pcb-2nd';
+                            }
+                            return '<span class="' + pcbClass + '">' + match + '</span>';
+                        });
+                        
+                        html += '<div style="width: 100%; font-size: ' + fontSize + 'px; font-weight: bold; text-align: left !important; display: block; line-height: 1.3; word-wrap: break-word; overflow-wrap: break-word; max-height: ' + (prod.memo ? '60px' : '75px') + '; overflow: hidden;">' + displayHtml + '</div>';
+                        
+                        if (prod.memo) {
+                            html += '<div class="gantt-bar-memo" style="width: 100%; font-size: 9px; color: red; text-align: left !important; display: block; margin-top: 2px;">🔖 ' + prod.memo + '</div>';
+                        }
+                        
+                        html += '<div style="width: 100%; font-size: 10px; color: #666; text-align: left !important; display: block; margin-top: 2px; position: absolute; bottom: 3px;">' + parseFloat(prod.duration).toFixed(1) + ' Shift</div>';
+                    } else {
+                        let modelDisplay = prod.model;
+                        if (prod.pcb && !prod.model.includes(prod.pcb)) {
+                            modelDisplay += ' ';
+                            
+                            let pcbClass = 'pcb-badge';
+                            let pcbText = prod.pcb;
+                            
+                            if (prod.pcb === '1차') {
+                                pcbClass += ' pcb-1st';
+                            } 
+                            else if (prod.pcb === '2차') {
+                                pcbClass += ' pcb-2nd';
+                            }
+                            else if (prod.pcb.includes('1') && prod.pcb.includes('2')) {
+                                pcbClass += ' pcb-both';
+                                pcbText = '양면';
+                            }
+                            else {
+                                pcbClass += ' pcb-2nd';
+                            }
+                            
+                            html += '<div style="width: 100%; font-size: ' + fontSize + 'px; font-weight: bold; text-align: left !important; display: block; line-height: 1.3; word-wrap: break-word;">' +
+                                modelDisplay.trim() + ' <span class="' + pcbClass + '" style="display: inline-block; vertical-align: middle;">' + pcbText + '</span></div>';
+                        } else {
+                            html += '<div style="width: 100%; font-size: ' + fontSize + 'px; font-weight: bold; text-align: left !important; display: block; line-height: 1.3; word-wrap: break-word;">' + modelDisplay + '</div>';
+                        }
+                        
+                        const quantityText = prod.quantityDisplay || (prod.quantity.toLocaleString() + 'ea');
+                        html += '<div style="width: 100%; font-size: 10px; margin-bottom: 2px; text-align: left !important; display: block;">' + quantityText + '</div>';
+                        
+                        if (prod.memo) {
+                            html += '<div class="gantt-bar-memo" style="width: 100%; font-size: 9px; color: red; margin-bottom: 2px; text-align: left !important; display: block;">🔖 ' + prod.memo + '</div>';
+                        }
+                        
+                        let efficiencyText = '';
+                        if (prod.pcb && prod.pcb.includes('차')) {
+                            let stItem = null;
+                            
+                            const isBothSide = prod.pcb.includes('1') && prod.pcb.includes('2');
+                            
+                            if (isBothSide) {
+                                stItem = stData.find(item => 
+                                    item.modelName === prod.model || item.nickname === prod.model
+                                );
+                            } else {
+                                stItem = stData.find(item => 
+                                    (item.modelName === prod.model || item.nickname === prod.model) && 
+                                    item.pcb === prod.pcb &&
+                                    item.line === prod.line
+                                );
+                                
+                                if (!stItem) {
+                                    stItem = stData.find(item => 
+                                        (item.modelName === prod.model || item.nickname === prod.model) && 
+                                        item.pcb === prod.pcb &&
+                                        !item.line
+                                    );
+                                }
+                                
+                                if (!stItem) {
+                                    stItem = stData.find(item => 
+                                        (item.modelName === prod.model || item.nickname === prod.model) && 
+                                        item.pcb === prod.pcb
+                                    );
+                                }
+                            }
+                            
+                            if (stItem && stItem.efficiency) {
+                                const effPercent = (stItem.efficiency * 100).toFixed(0);
+                                efficiencyText = ' / ' + effPercent + '%';
+                            }
+                        }
+                        
+                        html += '<div style="width: 100%; font-size: 9px; color: #666; text-align: left !important; display: block;">' + parseFloat(prod.duration).toFixed(1) + ' Shift' + efficiencyText + '</div>';
+                    }
+                    
+                    html += '</div>';
+                });
+                
+                currentSlot = isParking ? currentSlot + 1 : checkSlot;
+            });
+            
+            return html;
+        }
+        
+        function enableBarDrag() {
+            const bars = document.querySelectorAll('.gantt-bar');
+            
+            if (bars.length === 0) {
+                console.warn('경고: 간트바를 찾을 수 없습니다!');
+                return;
+            }
+            
+            console.log('간트바 이벤트 바인딩:', bars.length + '개');
+            
+            bars.forEach(bar => {
+                let clickTimer = null;
+                
+                bar.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    // 🔥 Shift + 클릭 = 입력창에 복사
+                    if (e.shiftKey) {
+                        const barId = parseInt(this.dataset.id);
+                        const prod = productionData.find(p => p.id === barId);
+                        
+                        if (prod) {
+                            fillInputFromProduction(prod);
+                            showCopyToast(prod.model);
+                            
+                            // 시각적 피드백 - 녹색 하이라이트
+                            this.style.boxShadow = '0 0 15px 3px #4CAF50';
+                            setTimeout(() => {
+                                this.style.boxShadow = '';
+                            }, 500);
+                        }
+                        return;
+                    }
+                    
+                    if (clickTimer !== null) {
+                        clearTimeout(clickTimer);
+                        clickTimer = null;
+                        const barId = parseInt(this.dataset.id);
+                        editProduction(barId);
+                        return;
+                    }
+                    
+                    clickTimer = setTimeout(() => {
+                        clickTimer = null;
+                        const barId = parseInt(this.dataset.id);
+                        
+                        if (this.classList.contains('selected')) {
+                            this.classList.remove('selected');
+                            selectedBars = selectedBars.filter(id => id !== barId);
+                        } else {
+                            this.classList.add('selected');
+                            if (!selectedBars.includes(barId)) {
+                                selectedBars.push(barId);
+                            }
+                        }
+                    }, 250);
+                });
+                
+                bar.addEventListener('dragstart', function(e) {
+                    draggedBar = this;
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                
+                bar.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                    draggedBar = null;
+                });
+            });
+            
+            const trashZone = document.getElementById('trashZone');
+            if (trashZone && !globalEventsInitialized) {
+                trashZone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    this.style.background = '#d32f2f';
+                    this.style.transform = 'scale(1.1)';
+                });
+                
+                trashZone.addEventListener('dragleave', function() {
+                    this.style.background = '#f44336';
+                    this.style.transform = 'scale(1)';
+                });
+                
+                trashZone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.style.background = '#f44336';
+                    this.style.transform = 'scale(1)';
+                    
+                    if (!draggedBar) return;
+                    
+                    const barId = parseInt(draggedBar.dataset.id);
+                    productionData = productionData.filter(p => p.id !== barId);
+                    generateGantt();
+                });
+                
+                globalEventsInitialized = true;
+            }
+            
+            const lineAreas = document.querySelectorAll('.gantt-line-area');
+            lineAreas.forEach(area => {
+                area.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                });
+                
+                area.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    if (!draggedBar) return;
+                    
+                    const targetLine = this.dataset.line;
+                    const barId = parseInt(draggedBar.dataset.id);
+                    const prod = productionData.find(p => p.id === barId);
+                    
+                    if (!prod) return;
+                    
+                    const oldLine = prod.line;
+                    
+                    const backup = productionData.map(p => ({
+                        id: p.id,
+                        line: p.line,
+                        order: p.order,
+                        duration: p.duration,
+                        originalDuration: p.originalDuration
+                    }));
+                    
+                    // 🔥 라인 간 이동
+                    if (oldLine !== targetLine) {
+                        const targetLineProds = productionData.filter(p => p.line === targetLine && p.id !== barId);
+                        const newOrder = targetLineProds.length; // 🔥 맨 뒤에 추가
+                        
+                        prod.line = targetLine;
+                        prod.order = newOrder;
+                        
+                        // 🔥 임시 라인 처리
+                        if (targetLine === '임시') {
+                            // 일반 라인 → 임시 라인
+                            if (!prod.originalDuration) {
+                                prod.originalDuration = prod.duration;
+                            }
+                            prod.duration = 1;
+                            
+                        pendingMove = {
+                            barId: barId,
+                            backup: backup,
+                            affectedIds: [],
+                            isParking: true
+                        };
+                    } else if (oldLine === '임시') {
+                        // 임시 라인 → 일반 라인
+                        const recalcResult = recalculateDurationOnDrag(prod, targetLine);
+                        
+                        // ST 재계산 실패 시 originalDuration 복원
+                        if (!recalcResult.found && prod.originalDuration) {
+                            prod.duration = prod.originalDuration;
+                        }
+                        
+                        // originalDuration 제거
+                        delete prod.originalDuration;
+                        
+                        pendingMove = {
+                            barId: barId,
+                            backup: backup,
+                            affectedIds: [],
+                            noST: !recalcResult.found,
+                            isUnparking: true
+                        };
+                    } else {
+                        // 일반 라인 → 일반 라인
+                        const recalcResult = recalculateDurationOnDrag(prod, targetLine);
+                        
+                        pendingMove = {
+                            barId: barId,
+                            backup: backup,
+                            affectedIds: [],
+                            noST: !recalcResult.found
+                        };
+                    }
+                    
+                } 
+                // 🔥 같은 라인 내 순서 변경
+                else {
+                    const dropX = e.clientX - this.getBoundingClientRect().left;
+                    const slotWidth = 90;
+                    const targetSlot = Math.floor(dropX / slotWidth);
+                    
+                    const sameLineProds = productionData
+                        .filter(p => p.line === targetLine && p.id !== barId)
+                        .sort((a, b) => a.order - b.order);
+                    
+                    let newOrder = 0;
+                    let inserted = false;
+                    const affectedIds = [];
+                    
+                    sameLineProds.forEach((p, idx) => {
+                        const barElement = document.querySelector(`[data-id="${p.id}"]`);
+                        if (!barElement) return;
+                        
+                        const pSlot = parseInt(barElement.dataset.startSlot || 0);
+                        
+                        if (!inserted && targetSlot <= pSlot) {
+                            newOrder = idx;
+                            inserted = true;
+                        }
+                        
+                        const newPOrder = inserted ? idx + 1 : idx;
+                        
+                        if (p.order !== newPOrder) {
+                            affectedIds.push(p.id);
+                            p.order = newPOrder;
+                        }
+                    });
+                    
+                    if (!inserted) {
+                        newOrder = sameLineProds.length;
+                    }
+                    
+                    prod.order = newOrder;
+                    
+                    pendingMove = {
+                        barId: barId,
+                        backup: backup,
+                        affectedIds: affectedIds,
+                        noST: false
+                    };
+                }
+                
+                showMoveConfirmation();
+                generateGantt();
+            });
+        });
+    }
+    
+    // 🔥 드래그 시 ST 기반 자동계산
+    function recalculateDurationOnDrag(prod, newLine) {
+        // 모델명 찾기
+        let baseModelName = prod.model;
+        if (prod.isMerged && prod.mergedData && prod.mergedData.length > 0) {
+            baseModelName = prod.mergedData[0].model;
+        }
+        
+        // PCB 찾기
+        let pcbToFind = prod.pcb;
+        
+        // 양면(1/2차)인 경우
+        if (pcbToFind && (pcbToFind.includes('1') && pcbToFind.includes('2'))) {
+            const lineModel1st = stData.find(item => 
+                (item.modelName === baseModelName || item.nickname === baseModelName) && 
+                item.line === newLine &&
+                item.pcb === '1차'
+            );
+            
+            const lineModel2nd = stData.find(item => 
+                (item.modelName === baseModelName || item.nickname === baseModelName) && 
+                item.line === newLine &&
+                item.pcb === '2차'
+            );
+            
+            let totalDuration = 0;
+            let found = false;
+            
+            if (lineModel1st) {
+                let duration1st = 0;
+                if (lineModel1st.quantity > 0) {
+                    const ratio1st = prod.quantity / lineModel1st.quantity;
+                    duration1st = lineModel1st.duration * ratio1st;
+                } else if (lineModel1st.stValue > 0 && lineModel1st.efficiency > 0) {
+                    duration1st = prod.quantity / (60 / lineModel1st.stValue * 10 * lineModel1st.efficiency);
+                }
+                if (duration1st > 0) {
+                    totalDuration += duration1st;
+                    found = true;
+                }
+            }
+            
+            if (lineModel2nd) {
+                let duration2nd = 0;
+                if (lineModel2nd.quantity > 0) {
+                    const ratio2nd = prod.quantity / lineModel2nd.quantity;
+                    duration2nd = lineModel2nd.duration * ratio2nd;
+                } else if (lineModel2nd.stValue > 0 && lineModel2nd.efficiency > 0) {
+                    duration2nd = prod.quantity / (60 / lineModel2nd.stValue * 10 * lineModel2nd.efficiency);
+                }
+                if (duration2nd > 0) {
+                    totalDuration += duration2nd;
+                    found = true;
+                }
+            }
+            
+            if (found) {
+                prod.duration = totalDuration;
+            }
+            
+            return { found: found };
+        }
+        
+        // 단면인 경우
+        const lineModel = stData.find(item => 
+            (item.modelName === baseModelName || item.nickname === baseModelName) && 
+            item.line === newLine &&
+            item.pcb === pcbToFind
+        );
+        
+        if (!lineModel) {
+            return { found: false };
+        }
+        
+        let calculatedDuration = 0;
+        
+        if (lineModel.quantity > 0) {
+            const ratio = prod.quantity / lineModel.quantity;
+            calculatedDuration = lineModel.duration * ratio;
+        } 
+        else if (lineModel.stValue > 0 && lineModel.efficiency > 0) {
+            calculatedDuration = prod.quantity / (60 / lineModel.stValue * 10 * lineModel.efficiency);
+        } 
+        else {
+            return { found: false };
+        }
+        
+        prod.duration = calculatedDuration;
+        return { found: true };
+    }
+    
+    function showMoveConfirmation() {
+        if (!pendingMove) return;
+        
+        const prod = productionData.find(p => p.id === pendingMove.barId);
+        if (!prod) return;
+        
+        const panel = document.getElementById('moveConfirmPanel');
+        const infoDiv = document.getElementById('moveInfo');
+        
+        const oldData = pendingMove.backup.find(b => b.id === pendingMove.barId);
+        
+        // 🔥 스타일 초기화
+        panel.classList.remove('st-warning', 'parking-move');
+        
+        // 🔥 임시 라인 이동
+        if (pendingMove.isParking) {
+            panel.classList.add('parking-move');
+            infoDiv.textContent = '라인 ' + oldData.line + ' → 임시 라인으로 이동\n소요일: ' + oldData.duration.toFixed(1) + ' Shift → 1 Shift (보관)';
+        } 
+        // 🔥 임시에서 복원
+        else if (pendingMove.isUnparking) {
+            panel.classList.add('parking-move');
+            let moveText = '임시 라인 → 라인 ' + prod.line + '로 복원';
+            if (pendingMove.noST) {
+                moveText += '\n⚠️ ' + prod.line + '라인 ST 데이터 없음\n(원래 소요일 ' + prod.duration.toFixed(1) + ' Shift 복원)';
+            } else {
+                moveText += '\n소요일: 1 Shift → ' + prod.duration.toFixed(1) + ' Shift (재계산)';
+            }
+            infoDiv.textContent = moveText;
+            
+            if (pendingMove.noST) {
+                panel.classList.add('st-warning');
+            }
+        }
+        // 🔥 ST 없음 경고
+        else if (pendingMove.noST) {
+            panel.classList.add('st-warning');
+            let moveText = '라인 ' + oldData.line + ' → 라인 ' + prod.line + '로 이동';
+            moveText += '\n⚠️ ' + prod.line + '라인 ST 데이터 없음\n(현재 소요일 ' + prod.duration.toFixed(1) + ' Shift 유지)';
+            infoDiv.textContent = moveText;
+        }
+        // 🔥 일반 이동
+        else if (oldData.line !== prod.line) {
+            infoDiv.textContent = '라인 ' + oldData.line + ' → 라인 ' + prod.line + '로 이동';
+        } 
+        // 🔥 순서 변경
+        else {
+            const affectedCount = pendingMove.affectedIds.length;
+            infoDiv.textContent = '라인 ' + prod.line + ' 내 순서 변경 (영향받은 모델: ' + affectedCount + '개)';
+        }
+        
+        panel.classList.add('show');
+    }
+    
+    function confirmMove() {
+        pendingMove = null;
+        document.getElementById('moveConfirmPanel').classList.remove('show');
+        document.getElementById('moveConfirmPanel').classList.remove('st-warning');
+        document.getElementById('moveConfirmPanel').classList.remove('parking-move');
+        generateGantt();
+    }
+    
+    function cancelMove() {
+        if (!pendingMove) return;
+        
+        pendingMove.backup.forEach(backup => {
+            const prod = productionData.find(p => p.id === backup.id);
+            if (prod) {
+                prod.line = backup.line;
+                prod.order = backup.order;
+                prod.duration = backup.duration;
+                if (backup.originalDuration !== undefined) {
+                    prod.originalDuration = backup.originalDuration;
+                } else {
+                    delete prod.originalDuration;
+                }
+            }
+        });
+        
+        pendingMove = null;
+        document.getElementById('moveConfirmPanel').classList.remove('show');
+        document.getElementById('moveConfirmPanel').classList.remove('st-warning');
+        document.getElementById('moveConfirmPanel').classList.remove('parking-move');
+        generateGantt();
+    }
+    
+    function clearSelection() {
+        selectedBars = [];
+        const bars = document.querySelectorAll('.gantt-bar');
+        bars.forEach(bar => bar.classList.remove('selected'));
+    }
+    
+    function mergeSelected() {
+        if (selectedBars.length < 2) {
+            alert('⚠️ 2개 이상의 작업을 선택하세요!');
+            return;
+        }
+        
+        const selectedProds = selectedBars
+            .map(id => productionData.find(p => p.id === id))
+            .filter(p => p);
+        
+        if (selectedProds.length < 2) {
+            alert('⚠️ 선택된 작업을 찾을 수 없습니다!');
+            return;
+        }
+        
+        const firstLine = selectedProds[0].line;
+        const allSameLine = selectedProds.every(p => p.line === firstLine);
+        
+        if (!allSameLine) {
+            alert('⚠️ 같은 라인의 작업만 묶을 수 있습니다!');
+            return;
+        }
+        
+        // 🔥 임시 라인 작업은 묶을 수 없음
+        if (firstLine === '임시') {
+            alert('⚠️ 임시 라인의 작업은 묶을 수 없습니다!');
+            return;
+        }
+        
+        const hasMerged = selectedProds.some(p => p.isMerged);
+        if (hasMerged) {
+            alert('⚠️ 이미 묶음된 항목은 다시 묶을 수 없습니다!\n먼저 묶음 해제를 해주세요.');
+            clearSelection();
+            return;
+        }
+        
+        selectedProds.sort((a, b) => a.order - b.order);
+        
+        const originalData = selectedProds.map(p => ({
+            id: p.id,
+            model: p.model,
+            quantity: p.quantity,
+            duration: p.duration,
+            pcb: p.pcb,
+            memo: p.memo,
+            color: p.color,
+            nightOff: p.nightOff,
+            line: p.line
+        }));
+        
+        const mergedModelDisplay = selectedProds.map(p => {
+            const modelName = p.model;
+            const pcbStr = p.pcb ? p.pcb : '';
+            return modelName + (pcbStr ? ' ' + pcbStr : '') + ' ' + p.quantity.toLocaleString() + 'ea';
+        }).join(' + ');
+        
+        const mergedDuration = selectedProds.reduce((sum, p) => sum + p.duration, 0);
+        const mergedMemo = selectedProds.map(p => p.memo).filter(m => m).join(', ');
+        
+        const firstProd = selectedProds[0];
+        const firstOrder = firstProd.order;
+        const firstColor = firstProd.color;
+        
+        firstProd.model = mergedModelDisplay;
+        firstProd.quantityDisplay = '';
+        firstProd.quantity = selectedProds[0].quantity;
+        firstProd.duration = mergedDuration;
+        firstProd.pcb = '';
+        firstProd.memo = mergedMemo;
+        firstProd.isMerged = true;
+        firstProd.mergedIds = selectedBars.slice();
+        firstProd.mergedData = originalData;
+        firstProd.order = firstOrder;
+        firstProd.color = firstColor;
+        
+        for (let i = 1; i < selectedProds.length; i++) {
+            productionData = productionData.filter(p => p.id !== selectedProds[i].id);
+        }
+        
+        clearSelection();
+        generateGantt();
+    }
+    
+    function unmergeProduction(id) {
+        const prod = productionData.find(p => p.id === id);
+        
+        if (!prod || !prod.isMerged) {
+            alert('⚠️ 묶음 작업이 아닙니다!');
+            return;
+        }
+        
+        if (!prod.mergedData || prod.mergedData.length === 0) {
+            alert('⚠️ 묶음 데이터가 없습니다!\n이 항목은 단일 작업으로 변환됩니다.');
+            prod.isMerged = false;
+            delete prod.mergedData;
+            delete prod.mergedIds;
+            delete prod.quantityDisplay;
+            generateGantt();
+            return;
+        }
+        
+        if (!confirm('묶음을 해제하시겠습니까?')) return;
+        
+        const currentLine = prod.line;
+        const baseOrder = prod.order;
+        productionData = productionData.filter(p => p.id !== id);
+        
+        prod.mergedData.forEach((item, idx) => {
+            const newProd = {
+                id: Math.floor(Date.now() + idx + Math.random() * 10000),
+                line: item.line || currentLine,
+                model: item.model,
+                quantity: item.quantity,
+                duration: item.duration,
+                pcb: item.pcb,
+                color: item.color,
+                memo: item.memo || '',
+                nightOff: item.nightOff || false,
+                order: baseOrder + idx
+            };
+            
+            productionData.push(newProd);
+        });
+        
+        generateGantt();
+    }
+    
+    function editProduction(id) {
+        const prod = productionData.find(p => p.id === id);
+        if (!prod) return;
+        
+        const mergedBadge = prod.isMerged ? '<span style="background: #2196F3; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 10px;">묶음</span>' : '';
+        
+        const formHtml = `
+            <div style="font-family: 'Malgun Gothic'; padding: 10px;">
+                <h3 style="margin-bottom: 15px;">📝 생산계획 수정${mergedBadge}</h3>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">🏭 라인:</label>
+                    <select id="edit_line" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                        <option value="A" ${prod.line === 'A' ? 'selected' : ''}>A</option>
+                        <option value="B" ${prod.line === 'B' ? 'selected' : ''}>B</option>
+                        <option value="C" ${prod.line === 'C' ? 'selected' : ''}>C</option>
+                        <option value="D" ${prod.line === 'D' ? 'selected' : ''}>D</option>
+                        <option value="E" ${prod.line === 'E' ? 'selected' : ''}>E</option>
+                        <option value="F" ${prod.line === 'F' ? 'selected' : ''}>F</option>
+                        <option value="G" ${prod.line === 'G' ? 'selected' : ''}>G</option>
+                        <option value="임시" ${prod.line === '임시' ? 'selected' : ''}>임시</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📦 모델명:</label>
+                    <input type="text" id="edit_model" value="${prod.model}" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; ime-mode: disabled;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📊 수량:</label>
+                    <input type="number" id="edit_qty" value="${prod.quantity}" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">🔧 PCB 구분:</label>
+                    <input type="text" id="edit_pcb" value="${prod.pcb || ''}" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">⏱️ 소요일:</label>
+                    <input type="number" id="edit_dur" value="${prod.duration}" step="0.1" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">🎨 색상:</label>
+                    <select id="edit_color" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                        <option value="1" ${prod.color === '1' ? 'selected' : ''}>1-노랑</option>
+                        <option value="2" ${prod.color === '2' ? 'selected' : ''}>2-핑크</option>
+                        <option value="3" ${prod.color === '3' ? 'selected' : ''}>3-파랑</option>
+                        <option value="4" ${prod.color === '4' ? 'selected' : ''}>4-연두</option>
+                        <option value="5" ${prod.color === '5' ? 'selected' : ''}>5-회색</option>
+                        <option value="6" ${prod.color === '6' ? 'selected' : ''}>6-미가동</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📝 메모:</label>
+                    <input type="text" id="edit_memo" value="${prod.memo || ''}" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="edit_nightOff" ${prod.nightOff ? 'checked' : ''}>
+                        <span>주간만 작업 (야간 건너뛰기)</span>
+                    </label>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: space-between;">
+                    <div style="display: flex; gap: 10px;">
+                        ${prod.isMerged ? '<button onclick="unmergeProduction(' + id + '); cancelEdit();" style="padding: 8px 16px; background: #FF9800; color: white; border: none; border-radius: 4px; cursor: pointer;">🔓 묶음해제</button>' : ''}
+                        <button onclick="deleteProductionFromEdit(' + id + ')" style="padding: 8px 16px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ 삭제</button>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="cancelEdit()" style="padding: 8px 16px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer;">취소</button>
+                        <button onclick="saveEdit(${id})" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">저장</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const modal = document.createElement('div');
+        modal.id = 'editModal';
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;';
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = 'background: white; padding: 20px; border-radius: 8px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);';
+        modalContent.innerHTML = formHtml;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // 🔥 수정 모달 내 자동계산 이벤트 추가
+        const editLine = document.getElementById('edit_line');
+        const editQty = document.getElementById('edit_qty');
+        const editPcb = document.getElementById('edit_pcb');
+        
+        if (editLine) {
+            editLine.addEventListener('change', function() {
+                recalculateSTInModal(id);
+            });
+        }
+        if (editQty) {
+            editQty.addEventListener('input', function() {
+                recalculateSTInModal(id);
+            });
+        }
+        if (editPcb) {
+            editPcb.addEventListener('input', function() {
+                recalculateSTInModal(id);
+            });
+        }
+    }
+    
+    function deleteProductionFromEdit(id) {
+        if (!confirm('이 작업을 삭제하시겠습니까?')) return;
+        
+        productionData = productionData.filter(p => p.id !== id);
+        
+        cancelEdit();
+        generateGantt();
+    }
+    
+    function saveEdit(id) {
+        const prod = productionData.find(p => p.id === id);
+        if (!prod) return;
+        
+        const newLine = document.getElementById('edit_line').value;
+        
+        // 라인이 변경되었고 같은 라인의 마지막으로 이동
+        if (prod.line !== newLine) {
+            const targetLineProds = productionData.filter(p => p.line === newLine && p.id !== id);
+            const maxOrder = targetLineProds.length > 0 
+                ? Math.max(...targetLineProds.map(p => p.order)) 
+                : -1;
+            
+            // 🔥 임시 라인으로 이동 시
+            if (newLine === '임시' && prod.line !== '임시') {
+                if (!prod.originalDuration) {
+                    prod.originalDuration = prod.duration;
+                }
+                prod.duration = 1;
+            }
+            // 🔥 임시에서 일반 라인으로 복원 시
+            else if (prod.line === '임시' && newLine !== '임시') {
+                if (prod.originalDuration) {
+                    prod.duration = prod.originalDuration;
+                    delete prod.originalDuration;
+                }
+            }
+            
+            prod.line = newLine;
+            prod.order = maxOrder + 1;
+        }
+        
+        prod.model = document.getElementById('edit_model').value;
+        prod.quantity = parseInt(document.getElementById('edit_qty').value);
+        prod.duration = parseFloat(document.getElementById('edit_dur').value);
+        
+        let pcbValue = document.getElementById('edit_pcb').value.trim();
+        if (pcbValue === '1') {
+            pcbValue = '1차';
+        } else if (pcbValue === '2') {
+            pcbValue = '2차';
+        } else if (pcbValue === '12' || pcbValue === '1/2') {
+            pcbValue = '1/2차';
+        }
+        prod.pcb = pcbValue;
+        
+        prod.color = document.getElementById('edit_color').value;
+        prod.memo = document.getElementById('edit_memo').value;
+        prod.nightOff = document.getElementById('edit_nightOff').checked;
+        
+        if (!prod.isMerged) {
+            delete prod.quantityDisplay;
+        }
+        
+        cancelEdit();
+        generateGantt();
+    }
+    
+    function cancelEdit() {
+        const modal = document.getElementById('editModal');
+        if (modal) modal.remove();
+    }
+    
+    function zoomIn() {
+        if (zoomLevel >= 200) return;
+        zoomLevel += 10;
+        applyZoom();
+    }
+    
+    function zoomOut() {
+        if (zoomLevel <= 50) return;
+        zoomLevel -= 10;
+        applyZoom();
+    }
+    
+    function applyZoom() {
+        const chart = document.getElementById('ganttChart');
+        chart.style.transform = 'scale(' + (zoomLevel / 100) + ')';
+        document.getElementById('zoomLevel').textContent = zoomLevel;
+    }
+    
+    function exportCSV() {
+        if (productionData.length === 0) {
+            alert('⚠️ 저장할 데이터가 없습니다!');
+            return;
+        }
+        
+        // 🔥 임시 라인 포함 모든 라인 정렬
+        const lines = ['A', 'B', 'C', 'D', 'E', 'F', 'G', '임시'];
+        lines.forEach(line => {
+            const lineProds = productionData
+                .filter(p => p.line === line)
+                .sort((a, b) => a.order - b.order);
+            
+            lineProds.forEach((prod, idx) => {
+                prod.order = idx;
+            });
+        });
+        
+        let csv = '라인,모델명,수량,소요일,PCB,색상,주간전용,메모,순서,묶음여부,묶음데이터,수량표시,공지사항,원래소요일\n';
+        productionData.forEach((item, idx) => {
+            const mergedDataStr = item.isMerged && item.mergedData ? 
+                JSON.stringify(item.mergedData).replace(/"/g, '""') : '';
+            
+            const noticeField = idx === 0 ? '"' + (noticeContent || '').replace(/"/g, '""') + '"' : '';
+            
+            // 🔥 originalDuration 저장
+            const originalDurationField = item.originalDuration ? item.originalDuration : '';
+            
+            csv += item.line + ',' +
+                '"' + item.model.replace(/"/g, '""') + '",' +
+                item.quantity + ',' +
+                item.duration + ',' +
+                (item.pcb || '') + ',' +
+                item.color + ',' +
+                (item.nightOff ? 'X' : '') + ',' +
+                '"' + (item.memo || '').replace(/"/g, '""') + '",' +
+                item.order + ',' +
+                (item.isMerged ? 'Y' : '') + ',' +
+                '"' + mergedDataStr + '",' +
+                '"' + (item.quantityDisplay || '').replace(/"/g, '""') + '",' +
+                noticeField + ',' +
+                originalDurationField + '\n';
+        });
+        
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = '생산계획_' + new Date().toISOString().slice(0,10) + '.csv';
+        link.click();
+    }
+    
+    function loadCSV() {
+        document.getElementById('csvLoadFile').click();
+    }
+    
+    function importCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const fileName = file.name;
+        const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+            const extractedDate = dateMatch[1];
+            document.getElementById('startDate').value = extractedDate;
+            originalCsvDate = extractedDate;
+            console.log('✅ 원본 CSV 날짜:', extractedDate);
+        } else {
+            originalCsvDate = null;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split('\n');
+            
+            productionData = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const cells = parseCSVLine(line);
+                
+                if (cells.length < 9) continue;
+                
+                if (i === 1 && cells.length >= 13 && cells[12]) {
+                    noticeContent = cells[12];
+                    document.getElementById('noticeText').value = noticeContent;
+                }
+                
+                const isMerged = cells[9] === 'Y';
+                let mergedData = null;
+                
+                if (isMerged && cells[10] && cells[10].trim()) {
+                    try {
+                        mergedData = JSON.parse(cells[10]);
+                        console.log('✅ 묶음 데이터 불러오기 성공:', mergedData);
+                    } catch (e) {
+                        console.error('❌ 묶음 데이터 파싱 실패:', e.message);
+                        console.error('📄 원본 데이터:', cells[10]);
+                    }
+                }
+                
+                const newProd = {
+                    id: Math.floor(Date.now() + i + Math.random() * 10000),
+                    line: cells[0],
+                    model: cells[1].replace(/<br>/gi, ' ').trim(),
+                    quantity: parseInt(cells[2]) || 0,
+                    duration: parseFloat(cells[3]) || 0,
+                    pcb: cells[4],
+                    color: cells[5],
+                    nightOff: cells[6] === 'X',
+                    memo: cells[7],
+                    order: parseInt(cells[8]) || 0
+                };
+                
+                if (isMerged) {
+                    newProd.isMerged = true;
+                    newProd.quantityDisplay = '';
+                    
+                    if (mergedData && Array.isArray(mergedData) && mergedData.length > 0) {
+                        newProd.mergedData = mergedData;
+                        newProd.mergedIds = mergedData.map(d => d.id);
+                    }
+                }
+                
+                // 🔥 originalDuration 불러오기
+                if (cells.length >= 14 && cells[13]) {
+                    const origDur = parseFloat(cells[13]);
+                    if (!isNaN(origDur) && origDur > 0) {
+                        newProd.originalDuration = origDur;
+                    }
+                }
+                
+                productionData.push(newProd);
+            }
+            
+            const dateInfo = dateMatch ? ' (시작날짜: ' + dateMatch[1] + ')' : '';
+            alert('✅ CSV 데이터 ' + productionData.length + '개 불러오기 완료!' + dateInfo);
+            console.log('불러온 데이터:', productionData);
+            generateGantt();
+        };
+        reader.readAsText(file, 'UTF-8');
+        
+        const originalOnload = reader.onload;
+        reader.onload = function(e) {
+            const text = e.target.result;
+            if (text.includes(' ') || text.includes('\ufffd')) {
+                console.log('⚠️ CSV UTF-8 인코딩 실패, EUC-KR 시도...');
+                const reader2 = new FileReader();
+                reader2.onload = originalOnload;
+                reader2.readAsText(file, 'EUC-KR');
+            } else {
+                originalOnload(e);
+            }
+        };
+    }
+    
+    function cleanupPastWork() {
+        if (!originalCsvDate) {
+            alert('⚠️ 원본 CSV 날짜 정보가 없습니다!\nCSV 파일을 먼저 불러와주세요.');
+            return;
+        }
+        
+        if (productionData.length === 0) {
+            alert('⚠️ 정리할 작업이 없습니다!');
+            return;
+        }
+        
+        const currentStartDate = document.getElementById('startDate').value;
+        if (!currentStartDate) {
+            alert('⚠️ 시작날짜를 입력해주세요!');
+            return;
+        }
+        
+        parseHolidays();
+        
+        const originalDate = new Date(originalCsvDate);
+        const newStartDate = new Date(currentStartDate);
+        const diffTime = newStartDate - originalDate;
+        const totalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (totalDays <= 0) {
+            alert('⚠️ 시작날짜가 원본 날짜보다 이전이거나 같습니다!\n정리할 과거 작업이 없습니다.');
+            return;
+        }
+        
+        let workDays = 0;
+        const dateDetails = [];
+        
+        for (let i = 0; i < totalDays; i++) {
+            const checkDate = new Date(originalDate);
+            checkDate.setDate(checkDate.getDate() + i);
+            const dateStr = checkDate.toISOString().split('T')[0];
+            const dayOfWeek = checkDate.getDay();
+            const dayName = ['일', '월', '화', '수', '목', '금', '토'][dayOfWeek];
+            
+            let isWorkDay = true;
+            let reason = '작업일';
+            
+            if (holidays[dateStr] === '휴무') {
+                isWorkDay = false;
+                reason = '휴무';
+            } 
+            else if (holidays[dateStr] === '특근') {
+                isWorkDay = true;
+                reason = '특근';
+            }
+            else if (dayOfWeek === 0 || dayOfWeek === 6) {
+                isWorkDay = false;
+                reason = '주말';
+            }
+            
+            if (isWorkDay) {
+                workDays++;
+            }
+            
+            dateDetails.push({
+                date: `${checkDate.getMonth()+1}/${checkDate.getDate()}(${dayName})`,
+                reason: reason,
+                isWorkDay: isWorkDay
+            });
+        }
+        
+        console.log('🔍 날짜 분석:', {
+            원본날짜: originalCsvDate,
+            현재날짜: currentStartDate,
+            총일수: totalDays,
+            실제작업일수: workDays
+        });
+        
+        dateDetails.forEach(d => {
+            console.log(`  ${d.date}: ${d.reason} ${d.isWorkDay ? '✅' : '❌'}`);
+        });
+        
+        if (workDays <= 0) {
+            alert('⚠️ 실제 작업일이 없습니다!\n(모두 주말이거나 휴무입니다)');
+            return;
+        }
+        
+        let dateDetailStr = '\n\n📅 날짜 상세:\n';
+        dateDetails.forEach(d => {
+            dateDetailStr += `${d.date}: ${d.reason}\n`;
+        });
+        
+        const confirmMsg = `📅 원본 날짜: ${originalCsvDate}\n📅 현재 날짜: ${currentStartDate}\n⏳ 총 일수: ${totalDays}일\n✅ 실제 작업일: ${workDays}일${dateDetailStr}\n${workDays}일치 작업을 순서대로 정리하시겠습니까?\n\n※ 각 라인별로 앞 작업부터 차감됩니다\n- 주야 작업: 1일당 2 Shift 차감\n- 주간만 작업: 1일당 1 Shift 차감\n- 임시 라인은 제외`;
+        
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+        
+        console.log('\n📊 차감 전 작업 현황:');
+        productionData.forEach(prod => {
+            console.log(`${prod.line}라인(${prod.order}): ${prod.model} - ${prod.duration} Shift (주간전용: ${prod.nightOff ? 'O' : 'X'})`);
+        });
+        
+        let deletedCount = 0;
+        let updatedCount = 0;
+        
+        const lines = ['A', 'B', 'C', 'D', 'E', 'F', 'G']; // 🔥 임시 라인 제외
+        const newProductionData = [];
+        
+        lines.forEach(line => {
+            const lineProds = productionData
+                .filter(p => p.line === line)
+                .sort((a, b) => a.order - b.order);
+            
+            if (lineProds.length === 0) return;
+            
+            const isNightOff = lineProds[0].nightOff;
+            let remainingDeduct = isNightOff ? workDays : (workDays * 2);
+            
+            console.log(`\n🔹 ${line}라인 처리 시작 (차감량: ${remainingDeduct} Shift, 주간전용: ${isNightOff ? 'O' : 'X'})`);
+            
+            lineProds.forEach(prod => {
+                if (remainingDeduct <= 0) {
+                    console.log(`✅ 유지: ${prod.model} - ${prod.duration} Shift (차감량 소진)`);
+                    newProductionData.push(prod);
+                    updatedCount++;
+                } else {
+                    const newDuration = prod.duration - remainingDeduct;
+                    
+                    if (newDuration <= 0) {
+                        console.log(`❌ 삭제: ${prod.model} (${prod.duration} - ${remainingDeduct} = ${newDuration})`);
+                        remainingDeduct = Math.abs(newDuration);
+                        deletedCount++;
+                    } else {
+                        console.log(`✅ 차감: ${prod.model} (${prod.duration} → ${newDuration.toFixed(1)} Shift)`);
+                        prod.duration = newDuration;
+                        newProductionData.push(prod);
+                        remainingDeduct = 0;
+                        updatedCount++;
+                    }
+                }
+            });
+        });
+        
+        // 🔥 임시 라인 작업은 그대로 유지
+        const parkingProds = productionData.filter(p => p.line === '임시');
+        parkingProds.forEach(prod => {
+            newProductionData.push(prod);
+        });
+        
+        productionData = newProductionData;
+        
+        console.log('\n📊 정리 결과:', {
+            차감된작업: updatedCount,
+            삭제된작업: deletedCount,
+            남은작업: productionData.length
+        });
+        
+        originalCsvDate = currentStartDate;
+        
+        generateGantt();
+        
+        alert(`✅ 과거 작업 정리 완료!\n\n📊 총 ${totalDays}일 중 실제 작업일 ${workDays}일 차감\n📊 차감/유지된 작업: ${updatedCount}개\n🗑️ 삭제된 작업: ${deletedCount}개\n📦 임시 작업: ${parkingProds.length}개 유지\n\n이제 CSV를 저장하세요!`);
+    }
+    
+    function toggleMemo() {
+        const ganttChart = document.getElementById('ganttChart');
+        const btn = document.getElementById('memoToggleBtn');
+        
+        if (ganttChart.classList.contains('memo-hidden')) {
+            ganttChart.classList.remove('memo-hidden');
+            btn.textContent = '👁️ 메모 숨김';
+            btn.style.background = 'white';
+            btn.style.color = '#667eea';
+        } else {
+            ganttChart.classList.add('memo-hidden');
+            btn.textContent = '👁️‍🗨️ 메모 표시';
+            btn.style.background = '#4CAF50';
+            btn.style.color = 'white';
+        }
+    }
+</script>
+</body>
+</html>
